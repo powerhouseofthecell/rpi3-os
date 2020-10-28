@@ -2,7 +2,7 @@
 #include "kernel/lfb.h"
 
 // currently written in C, will translate to CPP eventually
-void main() {
+extern "C" void main() {
     // set up serial console and linear frame buffer
     uart_init();
     lfb_init();
