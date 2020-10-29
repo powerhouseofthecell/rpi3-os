@@ -20,3 +20,8 @@ I don't know!
 -----
 
 Actually though, go check out [bztsrc's tutorial](https://github.com/bztsrc/raspi3-tutorial) if you want a real tutorial. Or [jsandler18's tutorial](https://jsandler18.github.io/)! Or maybe take a look at [this forum](https://www.raspberrypi.org/forums/viewtopic.php?t=201556), or [this one](https://www.raspberrypi.org/forums/viewtopic.php?t=214367), or even this great [OSDev Wiki page](https://wiki.osdev.org/Raspberry_Pi_Bare_Bones). These are how I got started building this cute OS (that might even boot!), and they've put in great work that you should check out. Also much of their code/tutorials was used as a starting point for this, and I'm eternally grateful they put their work online.
+
+-----
+
+## Credit Where Credit is Due
+Much of the code for this is pulled from [Harvard's CS61](https://cs61.seas.harvard.edu/site/2020/WeensyOS/). There is an extreme sense of gratitude I feel towards the systems professors at Harvard for enabling my project here, so if they ever see this - thank you so much!
