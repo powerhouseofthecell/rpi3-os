@@ -41,7 +41,7 @@ unsigned char *lfb;
 /**
  * Set screen resolution to 1024x768
  */
-void lfb_init()
+extern "C" void lfb_init()
 {
     mbox[0] = 35*4;
     mbox[1] = MBOX_REQUEST;
@@ -92,7 +92,7 @@ void lfb_init()
         width=mbox[5];
         height=mbox[6];
         pitch=mbox[33];
-        lfb=(void*)((unsigned long)mbox[28]);
+        lfb=(unsigned char*)((unsigned long)mbox[28]);
     } else {
         uart_puts("Unable to set screen resolution to 1024x768x32\n");
     }
@@ -101,7 +101,7 @@ void lfb_init()
 /**
  * Display a string using fixed size PSF
  */
-void lfb_print(int x, int y, char *s)
+extern "C" void lfb_print(int x, int y, char *s)
 {
     // get our font
     psf_t *font = (psf_t*)&_binary_font_psf_start;
@@ -147,7 +147,7 @@ void lfb_print(int x, int y, char *s)
 /**
  * Display a string using proportional SSFN
  */
-void lfb_proprint(int x, int y, char *s)
+extern "C" void lfb_proprint(int x, int y, char *s)
 {
     // get our font
     sfn_t *font = (sfn_t*)&_binary_font_sfn_start;

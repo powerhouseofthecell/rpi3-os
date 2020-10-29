@@ -8,7 +8,7 @@ extern "C" {
 /**
  * Wait N CPU cycles (ARM CPU only)
  */
-void wait_cycles(unsigned int n)
+extern "C" void wait_cycles(unsigned int n)
 {
     if(n) while(n--) { asm volatile("nop"); }
 }
@@ -16,7 +16,7 @@ void wait_cycles(unsigned int n)
 /**
  * Wait N microsec (ARM CPU only)
  */
-void wait_msec(unsigned int n)
+extern "C" void wait_msec(unsigned int n)
 {
     register unsigned long f, t, r;
     // get the current counter frequency
@@ -31,7 +31,7 @@ void wait_msec(unsigned int n)
 /**
  * Get System Timer's counter
  */
-unsigned long get_system_timer()
+extern "C" unsigned long get_system_timer()
 {
     unsigned int h=-1, l;
     // we must read MMIO area as two separate 32 bit reads
@@ -49,7 +49,7 @@ unsigned long get_system_timer()
 /**
  * Wait N microsec (with BCM System Timer)
  */
-void wait_msec_st(unsigned int n)
+extern "C" void wait_msec_st(unsigned int n)
 {
     unsigned long t=get_system_timer();
     // we must check if it's non-zero, because qemu does not emulate

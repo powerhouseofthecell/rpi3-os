@@ -17,7 +17,7 @@ extern "C" {
 /**
  * Set baud rate and characteristics (115200 8N1) and map to GPIO
  */
-void uart_init()
+extern "C" void uart_init()
 {
     register unsigned int r;
 
@@ -57,7 +57,7 @@ void uart_init()
 /**
  * Send a character
  */
-void uart_send(unsigned int c) {
+extern "C" void uart_send(unsigned int c) {
     /* wait until we can send */
     do{asm volatile("nop");}while(*UART0_FR&0x20);
     /* write the character to the buffer */
@@ -67,7 +67,7 @@ void uart_send(unsigned int c) {
 /**
  * Receive a character
  */
-char uart_getc() {
+extern "C" char uart_getc() {
     char r;
     /* wait until something is in the buffer */
     do{asm volatile("nop");}while(*UART0_FR&0x10);
@@ -80,7 +80,7 @@ char uart_getc() {
 /**
  * Display a string
  */
-void uart_puts(char *s) {
+extern "C" void uart_puts(char *s) {
     while(*s) {
         /* convert newline to carrige return + newline */
         if(*s=='\n')
@@ -92,7 +92,7 @@ void uart_puts(char *s) {
 /**
  * Display a binary value in hexadecimal
  */
-void uart_hex(unsigned int d) {
+extern "C" void uart_hex(unsigned int d) {
     unsigned int n;
     int c;
     for(c=28;c>=0;c-=4) {
