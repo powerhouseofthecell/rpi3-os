@@ -39,7 +39,7 @@ unsigned char *lfb;
 /**
  * Set screen resolution to 1024x768
  */
-extern "C" void lfb_init()
+void lfb_init()
 {
     mbox[0] = 35*4;
     mbox[1] = MBOX_REQUEST;
@@ -99,7 +99,7 @@ extern "C" void lfb_init()
 /**
  * Display a string using fixed size PSF
  */
-extern "C" void lfb_print(int x, int y, char *s)
+void lfb_print(int x, int y, char *s)
 {
     // get our font
     psf_t *font = (psf_t*)&_binary_font_psf_start;
@@ -145,7 +145,7 @@ extern "C" void lfb_print(int x, int y, char *s)
 /**
  * Display a string using proportional SSFN
  */
-extern "C" void lfb_proprint(int x, int y, char *s)
+void lfb_proprint(int x, int y, char *s)
 {
     // get our font
     sfn_t *font = (sfn_t*)&_binary_font_sfn_start;

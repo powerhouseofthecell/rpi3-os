@@ -1,8 +1,5 @@
-extern "C" {
-#include "kernel/lfb.h"
-}
-
 #include "kernel/uart.hh"
+#include "kernel/lfb.hh"
 
 extern "C" void kernel_main() {
     // set up serial console and linear frame buffer
