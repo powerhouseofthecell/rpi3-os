@@ -115,7 +115,7 @@ void lfb_print(int x, int y, const char *s) {
 
 // puts a single character to the lfb
 void lfb_putc(int x, int y, char c, int color, int rev_color) {
-    // get the offset of the glyph. Need to adjust this to support unicode table
+    // get the offset of the glyph
     unsigned char *glyph = (unsigned char*) &_binary_font_psf_start +
         font->headersize + (((unsigned char)c) < font->numglyph ? c : 0) * font->bytesperglyph;
 
@@ -129,7 +129,8 @@ void lfb_putc(int x, int y, char c, int color, int rev_color) {
     if (c == '\r') {
         x = 0;
     } else if (c == '\n') {
-        x = 0; y += font->height;
+        x = 0;
+        y += font->height;
     } else {
         // display a character
         for (j = 0; j < font->height; ++j) {
@@ -139,7 +140,7 @@ void lfb_putc(int x, int y, char c, int color, int rev_color) {
 
             for (i = 0; i < font->width; ++i) {
                 // if bit set, we use white color, otherwise black
-                *((unsigned int*)(lfb + line)) = ((int)*glyph) & mask ? color : rev_color;
+                *((unsigned int*)(lfb + line)) = ((int) *glyph) & mask ? color : rev_color;
                 mask >>= 1;
                 line += 4;
             }

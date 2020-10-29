@@ -37,6 +37,7 @@ extern volatile unsigned char _binary_font_sfn_start;
 
 // define some lfb globals
 extern psf_t* font;
+extern unsigned char *lfb;
 
 void lfb_init();
 
