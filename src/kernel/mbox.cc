@@ -17,7 +17,7 @@ volatile unsigned int  __attribute__((aligned(16))) mbox[36];
 /**
  * Make a mailbox call. Returns 0 on failure, non-zero on success
  */
-extern "C" int mbox_call(unsigned char ch)
+int mbox_call(unsigned char ch)
 {
     unsigned int r = (((unsigned int)((unsigned long)&mbox)&~0xF) | (ch&0xF));
     /* wait until we can write to the mailbox */

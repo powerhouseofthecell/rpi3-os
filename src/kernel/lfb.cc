@@ -1,8 +1,5 @@
-extern "C" {
-#include "kernel/mbox.h"
-}
-
 #include "kernel/uart.hh"
+#include "kernel/mbox.hh"
 
 /* PC Screen Font as used by Linux Console */
 typedef struct {

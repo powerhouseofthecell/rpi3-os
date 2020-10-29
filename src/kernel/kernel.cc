@@ -1,5 +1,4 @@
 extern "C" {
-
 #include "kernel/lfb.h"
 }
 
