@@ -1,6 +1,4 @@
-extern "C" {
-#include "kernel/gpio.h"
-}
+#include "kernel/gpio.hh"
 
 /* mailbox message buffer */
 volatile unsigned int  __attribute__((aligned(16))) mbox[36];
