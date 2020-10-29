@@ -18,7 +18,7 @@ extern "C" void kernel_main() {
 
     // echo everything back
     while(1) {
-        uint8_t c = (uint8_t) uart_getc();
+        uint8_t c = (uint8_t) toupper(uart_getc());
         uart_send((unsigned int) c);
     }
 }
