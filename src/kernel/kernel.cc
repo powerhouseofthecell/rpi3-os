@@ -1,6 +1,8 @@
 #include "kernel/uart.hh"
 #include "kernel/lfb.hh"
 
+#include "common/stdlib.hh"
+
 extern "C" void kernel_main() {
     // set up serial console and linear frame buffer
     uart_init();
