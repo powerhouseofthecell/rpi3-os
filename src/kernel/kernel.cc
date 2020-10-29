@@ -1,8 +1,9 @@
+extern "C" {
 #include "kernel/uart.h"
 #include "kernel/lfb.h"
+}
 
-// currently written in C, will translate to CPP eventually
-extern "C" void main() {
+extern "C" void kernel_main() {
     // set up serial console and linear frame buffer
     uart_init();
     lfb_init();
