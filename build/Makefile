@@ -20,7 +20,7 @@ OBJECTS += $(patsubst $(COMMON_SRC)/%.cc, $(OBJ_DIR)/%.o, $(COMMONSOURCES))
 OBJECTS += $(patsubst $(KER_SRC)/%.S, $(OBJ_DIR)/%.o, $(ASMSOURCES))
 OBJECTS += font_psf.o font_sfn.o
 
-HEADERS = $(wildcard $(KER_HEAD)/*.h)
+HEADERS = $(wildcard $(KER_HEAD)/*.h) $(wildcard $(KER_HEAD)/*.hh)
 
 build: $(OBJECTS) $(HEADERS)
 	$(TOOLCHAIN_PREFIX)-ld -nostdlib -nostartfiles $(OBJECTS) -T linker.ld -o $(KERNEL_NAME).elf
