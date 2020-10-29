@@ -1,6 +1,4 @@
-extern "C" {
 #include "kernel/gpio.h"
-}
 
 #define SYSTMR_LO        ((volatile unsigned int*)(MMIO_BASE+0x00003004))
 #define SYSTMR_HI        ((volatile unsigned int*)(MMIO_BASE+0x00003008))
@@ -8,7 +6,7 @@ extern "C" {
 /**
  * Wait N CPU cycles (ARM CPU only)
  */
-extern "C" void wait_cycles(unsigned int n)
+void wait_cycles(unsigned int n)
 {
     if(n) while(n--) { asm volatile("nop"); }
 }
@@ -16,7 +14,7 @@ extern "C" void wait_cycles(unsigned int n)
 /**
  * Wait N microsec (ARM CPU only)
  */
-extern "C" void wait_msec(unsigned int n)
+void wait_msec(unsigned int n)
 {
     register unsigned long f, t, r;
     // get the current counter frequency
@@ -31,7 +29,7 @@ extern "C" void wait_msec(unsigned int n)
 /**
  * Get System Timer's counter
  */
-extern "C" unsigned long get_system_timer()
+unsigned long get_system_timer()
 {
     unsigned int h=-1, l;
     // we must read MMIO area as two separate 32 bit reads
@@ -49,7 +47,7 @@ extern "C" unsigned long get_system_timer()
 /**
  * Wait N microsec (with BCM System Timer)
  */
-extern "C" void wait_msec_st(unsigned int n)
+void wait_msec_st(unsigned int n)
 {
     unsigned long t=get_system_timer();
     // we must check if it's non-zero, because qemu does not emulate

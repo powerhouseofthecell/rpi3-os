@@ -1,8 +1,9 @@
 extern "C" {
 #include "kernel/gpio.h"
 #include "kernel/mbox.h"
-#include "kernel/delays.h"
 }
+
+#include "kernel/delays.hh"
 
 /* PL011 UART registers */
 #define UART0_DR        ((volatile unsigned int*)(MMIO_BASE+0x00201000))
