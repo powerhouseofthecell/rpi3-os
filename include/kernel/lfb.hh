@@ -35,9 +35,20 @@ typedef struct {
 } __attribute__((packed)) sfn_t;
 extern volatile unsigned char _binary_font_sfn_start;
 
+// contains information about the framebuffer
+// there should be a single global one of these
+struct framebufferInfo {
+    int height;
+    int width;
+    int pitch;
+};
+
 // define some lfb globals
 extern psf_t* font;
+
+// TODO: move the address of the framebuffer into a property of the fbInfo object
 extern unsigned char *lfb;
+extern framebufferInfo fbInfo;
 
 void lfb_init();
 
