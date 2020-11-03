@@ -42,10 +42,14 @@ public:
     // at position (charX, charY) (this is the char position, not the pixel position)
     void putc(uint32_t charX, uint32_t charY, char c, int textColor, int reverseColor);
     void putc(char c);
+    void putc(char c, int color);
+    void putc(char c, int color, int rev);
 
     // places a null-terminated string starting at (charX, charY) (position by characters)
-    void puts(uint32_t charX, uint32_t charY, const char* str);
+    void puts(uint32_t charX, uint32_t charY, const char* str, int color, int rev);
     void puts(const char* str);
+    void puts(const char* str, int color);
+    void puts(const char* str, int color, int rev);
 
     // allows limited printing functionality (prints to the console)
     void printf(const char * fmt, ...);

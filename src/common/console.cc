@@ -80,14 +80,27 @@ void Console::putc(uint32_t charX, uint32_t charY, char c, int textColor, int re
 void Console::putc(char c) {
     putc(char_xpos, char_ypos, c, WHITE, BLACK);
 }
+void Console::putc(char c, int color) {
+    putc(char_xpos, char_ypos, c, color, BLACK);
+}
+void Console::putc(char c, int color, int rev) {
+    putc(char_xpos, char_ypos, c, color, rev);
+}
 
-void Console::puts(uint32_t charX, uint32_t charY, const char* str) {
+// allows printing whole strings to the console
+void Console::puts(uint32_t charX, uint32_t charY, const char* str, int color, int rev) {
     for (int i = 0; str[i] != '\0'; ++i) {
-        putc(charX + i, charY, str[i], WHITE, BLACK);
+        putc(charX + i, charY, str[i], color, rev);
     }
 }
 void Console::puts(const char* str) {
-    puts(char_xpos, char_ypos, str);
+    puts(char_xpos, char_ypos, str, WHITE, BLACK);
+}
+void Console::puts(const char* str, int color) {
+    puts(char_xpos, char_ypos, str, color, BLACK);
+}
+void Console::puts(const char* str, int color, int rev) {
+    puts(char_xpos, char_ypos, str, color, rev);
 }
 
 void Console::printf(const char * fmt, ...) {
@@ -105,6 +118,7 @@ void Console::printf(const char * fmt, ...) {
                     puts(itoa(va_arg(args, int), 10));
                     break;
                 case 'x':
+                case 'p':
                     puts(itoa(va_arg(args, int), 16));
                     break;
                 case 's':
