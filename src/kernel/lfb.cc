@@ -59,6 +59,7 @@ void lfb_init() {
         fbInfo.width = mbox[5];
         fbInfo.height = mbox[6];
         fbInfo.pitch = mbox[33];
+        fbInfo.depth = mbox[20];
 
         mbox[28] &= 0x3FFFFFFF;
         lfb = (unsigned char*)((unsigned long) mbox[28]);

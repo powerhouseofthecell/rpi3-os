@@ -5,127 +5,89 @@ Console::Console(uint64_t addr) {
     console_addr = addr;
 }
 
-void Console::write_pixel(uint32_t x, uint32_t y, const uint8_t* pixel) {
-    uint8_t* location = (uint8_t*) ((char*) console_addr) + y * bytesPerRow + x * bytesPerPixel;
-    memcpy(location, (void*) pixel, bytesPerPixel);
-}
-
-void Console::clear() {
-    // for (int y = 0; y < 480; ++y) {
-    //     for (int x = 0; x < 640; ++x) {
-    //         write_pixel(x, y, BLACK);
-    //     }
-    // }
-
-    // char_xpos = 0;
-    // char_ypos = 0;
-}
-
-void Console::putc(int charX, int charY, char c) {
-    // // don't attempt to print beyond the console
-    // if (charX >= (640 / CHAR_WIDTH) || charY >= (480 / CHAR_HEIGHT)) {
-    //     return;
-    // }
-
-    // switch (c) {
-    //     case '\n':
-    //         char_xpos = 0;
-    //         ++char_ypos;
-    //         break;
-
-    //     case '\r':
-    //         char_xpos = 0;
-    //         break;
-
-    //     default:
-    //         uint8_t w, h;
-    //         uint8_t mask;
-
-    //         // get the bitmap for this character
-    //         const uint8_t* bmp = font(c);
-
-    //         // print the character pixel by pixel
-    //         for (w = 0; w < CHAR_WIDTH; ++w) {
-    //             for (h = 0; h < CHAR_HEIGHT; ++h) {
-    //                 mask = 1 << (w);
-    //                 if (bmp[h] & mask) {
-    //                     write_pixel(charX * CHAR_WIDTH + w, charY * CHAR_HEIGHT + h, text_color);
-    //                 } else {
-    //                     write_pixel(charX * CHAR_WIDTH + w, charY * CHAR_HEIGHT + h, reverse_video);
-    //                 }
-    //             }
-    //         }
-
-    //         char_xpos = charX + 1;
-    //         char_ypos = charY;
-    // }
+// x and y are pixel locations
+void Console::write_pixel(uint32_t x, uint32_t y, uint32_t pixel) {
+    unsigned int* location = (unsigned int*) (console_addr + y * ((fbInfo.depth / 8) * fbInfo.width) + x * (fbInfo.depth / 8));
     
-    // if (char_xpos >= 640 / CHAR_WIDTH) {
-    //     ++char_ypos;
-    //     char_xpos = 0;
-    // }
+    // set the location to the pixel
+    *location = pixel;
+}
 
-    // if (char_ypos >= 480 / CHAR_HEIGHT) {
-    //     char_ypos = 0;
-    // }
+// clear the console by setting all pixels to black
+void Console::clear() {
+    for (int y = 0; y < fbInfo.height; ++y) {
+        for (int x = 0; x < fbInfo.width; ++x) {
+            write_pixel(x, y, 0x00);
+        }
+    }
+
+    char_xpos = 0;
+    char_ypos = 0;
+}
+
+// put a single character (c) to the console at character position (charX, charY)
+void Console::putc(uint32_t charX, uint32_t charY, char c, int textColor, int reverseColor) {
+    // don't attempt to print beyond the console
+    if (charX >= (fbInfo.width / font->width) || charY >= (fbInfo.height / font->height)) {
+        return;
+    }
+
+    switch (c) {
+        case '\n':
+            char_xpos = 0;
+            ++char_ypos;
+            break;
+
+        case '\r':
+            char_xpos = 0;
+            break;
+
+        default:
+            // get the bitmap for this character
+            unsigned char* glyph = (unsigned char*) &_binary_font_psf_start +
+                font->headersize + (((unsigned char)c) < font->numglyph ? c : 0) * font->bytesperglyph;
+
+            uint8_t w, h;
+
+            // the mask determines which bit in the bitmap we're examining
+            uint8_t mask;
+
+            // print the character pixel by pixel
+            for (w = 0; w < font->width; ++w) {
+                for (h = 0; h < font->height; ++h) {
+                    mask = 1 << (w);
+                    if (glyph[h] & mask) {
+                        write_pixel(charX * font->width + (font->width - w), charY * font->height + h, textColor);
+                    } else {
+                        write_pixel(charX * font->width + (font->width - w), charY * font->height + h, reverseColor);
+                    }
+                }
+            }
+
+            char_xpos = charX + 1;
+            char_ypos = charY;
+    }
+    
+    if (char_xpos >= fbInfo.width / font->width) {
+        ++char_ypos;
+        char_xpos = 0;
+    }
+
+    if (char_ypos >= fbInfo.height / font->height) {
+        char_ypos = 0;
+    }
 }
 void Console::putc(char c) {
-    // // don't attempt to print beyond the console
-    // if (char_xpos >= (640 / CHAR_WIDTH) || char_ypos >= (480 / CHAR_HEIGHT)) {
-    //     return;
-    // }
-
-    // switch (c) {
-    //     case '\n':
-    //         char_xpos = 0;
-    //         ++char_ypos;
-    //         break;
-
-    //     case '\r':
-    //         char_xpos = 0;
-    //         break;
-
-    //     default:
-    //         uint8_t w, h;
-    //         uint8_t mask;
-
-    //         // get the bitmap for this character
-    //         const uint8_t* bmp = font(c);
-
-    //         // print the character pixel by pixel
-    //         for (w = 0; w < CHAR_WIDTH; ++w) {
-    //             for (h = 0; h < CHAR_HEIGHT; ++h) {
-    //                 mask = 1 << (w);
-    //                 if (bmp[h] & mask) {
-    //                     write_pixel(char_xpos * CHAR_WIDTH + w, char_ypos * CHAR_HEIGHT + h, text_color);
-    //                 } else {
-    //                     write_pixel(char_xpos * CHAR_WIDTH + w, char_ypos * CHAR_HEIGHT + h, reverse_video);
-    //                 }
-    //             }
-    //         }
-
-    //         ++char_xpos;
-    // }
-    
-    // if (char_xpos >= 640 / CHAR_WIDTH) {
-    //     ++char_ypos;
-    //     char_xpos = 0;
-    // }
-
-    // if (char_ypos >= 480 / CHAR_HEIGHT) {
-    //     char_ypos = 0;
-    // }
+    putc(char_xpos, char_ypos, c, WHITE, BLACK);
 }
 
-void Console::puts(int charX, int charY, const char* str) {
+void Console::puts(uint32_t charX, uint32_t charY, const char* str) {
     for (int i = 0; str[i] != '\0'; ++i) {
-        putc(charX + i, charY, str[i]);
+        putc(charX + i, charY, str[i], WHITE, BLACK);
     }
 }
 void Console::puts(const char* str) {
-    for (int i = 0; str[i] != '\0'; ++i) {
-        putc(str[i]);
-    }
+    puts(char_xpos, char_ypos, str);
 }
 
 void Console::printf(const char * fmt, ...) {

@@ -38,8 +38,14 @@ extern volatile unsigned char _binary_font_sfn_start;
 // contains information about the framebuffer
 // there should be a single global one of these
 struct framebufferInfo {
+    // height of the console in pixels
     int height;
+
+    // width of the console in pixels
     int width;
+
+    // how many bits per pixel
+    int depth;
     int pitch;
 };
 
