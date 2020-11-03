@@ -1,8 +1,19 @@
 #include "common/console.hh"
 #include "common/stdlib.hh"
 
+// initialize the console
 Console::Console(uint64_t addr) {
     console_addr = addr;
+}
+
+// allow setting text
+void Console::setTextColor(int color) {
+    text_color = color;
+}
+
+// allow setting the reverse video color
+void Console::setReverseColor(int color) {
+    reverse_video = color;
 }
 
 // x and y are pixel locations
@@ -13,11 +24,11 @@ void Console::write_pixel(uint32_t x, uint32_t y, uint32_t pixel) {
     *location = pixel;
 }
 
-// clear the console by setting all pixels to black
+// clear the console by setting all pixels to reverse_video
 void Console::clear() {
     for (int y = 0; y < fbInfo.height; ++y) {
         for (int x = 0; x < fbInfo.width; ++x) {
-            write_pixel(x, y, 0x00);
+            write_pixel(x, y, reverse_video);
         }
     }
 
@@ -26,7 +37,7 @@ void Console::clear() {
 }
 
 // put a single character (c) to the console at character position (charX, charY)
-void Console::putc(uint32_t charX, uint32_t charY, char c, int textColor, int reverseColor) {
+void Console::putc(uint32_t charX, uint32_t charY, char c, unsigned int textColor, unsigned int reverseColor) {
     // don't attempt to print beyond the console
     if (charX >= (fbInfo.width / font->width) || charY >= (fbInfo.height / font->height)) {
         return;
@@ -78,31 +89,32 @@ void Console::putc(uint32_t charX, uint32_t charY, char c, int textColor, int re
     }
 }
 void Console::putc(char c) {
-    putc(char_xpos, char_ypos, c, WHITE, BLACK);
+    putc(char_xpos, char_ypos, c, text_color, reverse_video);
 }
-void Console::putc(char c, int color) {
-    putc(char_xpos, char_ypos, c, color, BLACK);
+void Console::putc(char c, unsigned int color) {
+    putc(char_xpos, char_ypos, c, color, reverse_video);
 }
-void Console::putc(char c, int color, int rev) {
+void Console::putc(char c, unsigned int color, unsigned int rev) {
     putc(char_xpos, char_ypos, c, color, rev);
 }
 
 // allows printing whole strings to the console
-void Console::puts(uint32_t charX, uint32_t charY, const char* str, int color, int rev) {
+void Console::puts(uint32_t charX, uint32_t charY, const char* str, unsigned int color, unsigned int rev) {
     for (int i = 0; str[i] != '\0'; ++i) {
         putc(charX + i, charY, str[i], color, rev);
     }
 }
 void Console::puts(const char* str) {
-    puts(char_xpos, char_ypos, str, WHITE, BLACK);
+    puts(char_xpos, char_ypos, str, text_color, reverse_video);
 }
-void Console::puts(const char* str, int color) {
-    puts(char_xpos, char_ypos, str, color, BLACK);
+void Console::puts(const char* str, unsigned int color) {
+    puts(char_xpos, char_ypos, str, color, reverse_video);
 }
-void Console::puts(const char* str, int color, int rev) {
+void Console::puts(const char* str, unsigned int color, unsigned int rev) {
     puts(char_xpos, char_ypos, str, color, rev);
 }
 
+// limited format string printing to the console!
 void Console::printf(const char * fmt, ...) {
     va_list args;
     va_start(args, fmt);

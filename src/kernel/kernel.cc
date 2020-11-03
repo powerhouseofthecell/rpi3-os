@@ -12,7 +12,7 @@ extern "C" void kernel_main() {
 
     Console console((uint64_t) lfb);
     console.puts("Hello, world!\n");
-    
+
     // echo everything back
     while (true) {
         int c = toupper(uart_getc());
