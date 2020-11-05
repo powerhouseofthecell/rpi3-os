@@ -1,6 +1,7 @@
 #ifndef STDLIB_HH
 #define STDLIB_HH
 #include "common/types.hh"
+#include "kernel/uart.hh"
 
 extern "C" {
 void* memcpy(void* dst, const void* src, size_t n);
@@ -33,6 +34,8 @@ inline int toupper(int c);
 char* itoa(int num, int base);
 int atoi(char * num);
 
+unsigned long getCurrentEL();
+
 // single character manipulations/properties
 inline bool isspace(int c) {
     return (c >= '\t' && c <= '\r') || c == ' ';
@@ -58,6 +61,29 @@ inline int tolower(int c) {
 }
 inline int toupper(int c) {
     return islower(c) ? c + 'A' - 'a' : c;
+}
+
+template <typename T>
+inline constexpr T round_down(T x, unsigned multiple) {
+    return x - (x % multiple);
+}
+template <typename T>
+inline constexpr T round_up(T x, unsigned multiple) {
+    return round_down(x + multiple - 1, multiple);
+}
+
+// assert(x)
+//    If !x, then print a message and spin forever
+#define assert(x) \
+    if (!(x)) \
+        _assertion_failure(__FILE__, __LINE__)
+inline void _assertion_failure(char* file, int line) {
+    uart_puts(file);
+    uart_puts(":");
+    uart_puts(itoa(line, 10));
+    uart_puts(": Assertion failure\n");
+    
+    while (true);
 }
 
 #endif

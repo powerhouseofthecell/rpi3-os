@@ -51,7 +51,7 @@ public:
     void puts(const char* str, unsigned int color, unsigned int rev);
 
     // allows limited printing functionality (prints to the console)
-    void printf(const char * fmt, ...);
+    void printf(const char* format, ...);
 };
 
 #endif

@@ -208,8 +208,8 @@ long strtol(const char* s, char** endptr, int base) {
 
 // converts an integer to its string representation
 char* itoa(int num, int base) {
-    static char intbuf[32];
-    uint32_t j = 0, isneg = 0, i;
+    static char intbuf[64];
+    uint64_t j = 0, isneg = 0, i;
 
     if (num == 0) {
         intbuf[0] = '0';
@@ -222,22 +222,23 @@ char* itoa(int num, int base) {
         num = -num;
     }
 
-    i = (uint32_t) num;
+    i = (uint64_t) num;
 
     while (i != 0) {
        intbuf[j++] = (i % base) < 10 ? '0' + (i % base) : 'a' + (i % base) - 10;
        i = i / base;
     }
 
-    if (isneg)
+    if (isneg) {
         intbuf[j++] = '-';
+    }
 
     if (base == 16) {
         intbuf[j++] = 'x';
         intbuf[j++] = '0';
-    } else if(base == 8) {
+    } else if (base == 8) {
         intbuf[j++] = '0';
-    } else if(base == 2) {
+    } else if (base == 2) {
         intbuf[j++] = 'b';
         intbuf[j++] = '0';
     }
@@ -279,4 +280,14 @@ int atoi(char * num) {
     }
 
     return res;
+}
+
+// returns the current exception level
+unsigned long getCurrentEL() {
+    unsigned long el;
+
+    // read the current level from system register
+    asm volatile ("mrs %0, CurrentEL" : "=r" (el));
+
+    return el >> 2;
 }

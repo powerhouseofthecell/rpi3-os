@@ -32,7 +32,7 @@ $(OBJ_DIR)/%.o: $(KER_SRC)/%.cc
 
 $(OBJ_DIR)/%.o: $(KER_SRC)/%.S
 	mkdir -p $(@D)
-	$(CC) $(CFLAGS) -I$(KER_SRC) -c $< -o $@
+	$(CC) $(CFLAGS) -I$(KER_SRC) -I$(KER_HEAD) -c $< -o $@
 
 $(OBJ_DIR)/%.o: $(COMMON_SRC)/%.cc
 	mkdir -p $(@D)
