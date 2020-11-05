@@ -77,7 +77,7 @@ inline constexpr T round_up(T x, unsigned multiple) {
 #define assert(x) \
     if (!(x)) \
         _assertion_failure(__FILE__, __LINE__)
-inline void _assertion_failure(char* file, int line) {
+inline void _assertion_failure(const char* file, int line) {
     uart_puts(file);
     uart_puts(":");
     uart_puts(itoa(line, 10));

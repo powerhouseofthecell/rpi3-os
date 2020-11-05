@@ -36,7 +36,7 @@
 #define VA_LOWMIN       0UL                  // min low canonical address
 #define VA_LOWMAX       0x00007FFFFFFFFFFFUL // max low canonical address
 #define VA_LOWEND       0x0000800000000000UL // one past `VA_LOWMAX`
-#define VA_HIGHMIN      0xFFFF800000000000UL // min high canonical address
+#define VA_HIGHMIN      0xFFFFFF8000000000UL // min high canonical address
 #define VA_HIGHMAX      0xFFFFFFFFFFFFFFFFUL // max high canonical address
 #define VA_NONCANONMAX  0x0000FFFFFFFFFFFFUL // max non-canonical address
 #define VA_NONCANONEND  0x0001000000000000UL // one past `VA_NONCANONMAX`
@@ -60,12 +60,12 @@ static inline bool va_is_canonical(uintptr_t va) {
     return va <= VA_LOWMAX || va >= VA_HIGHMIN;
 }
 
-
-// Page table entry type and page table type
+// a page type
 typedef struct __attribute__((aligned(PAGESIZE))) page {
     uint8_t x[PAGESIZE];
 } page;
 
+// an entry within a pagetable
 typedef uint64_t pageentry_t;
 typedef struct __attribute__((aligned(PAGESIZE))) pagetable {
     pageentry_t entry[1 << PAGEINDEXBITS];

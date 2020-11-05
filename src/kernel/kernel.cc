@@ -23,11 +23,11 @@ pageinfo pages[NPAGES];
 
 void dissect_vaddr(Console console, unsigned long vaddr) {
     console.printf("dissecting           : %p\n", vaddr);
-    console.printf("rg sel: bits [37, 64): 0x%x\n", vaddr >> 37);
-    console.printf("l1 idx: bits [30, 37): 0x%x\n", (vaddr >> 30) & 127);
-    console.printf("l2 idx: bits [21, 30): 0x%x\n", (vaddr >> 21) & 511);
-    console.printf("l3 idx: bits [12, 21): 0x%x\n", (vaddr >> 12) & 511);
-    console.printf("pa idx: bits [00, 12): 0x%x\n", vaddr & 4095);
+    console.printf("rg sel: bits [39, 64): 0x%x\n", vaddr >> 39);
+    console.printf("l1 idx: bits [30, 39): 0x%x\n", pageindex(vaddr, 2));
+    console.printf("l2 idx: bits [21, 30): 0x%x\n", pageindex(vaddr, 1));
+    console.printf("l3 idx: bits [12, 21): 0x%x\n", pageindex(vaddr, 0));
+    console.printf("pa idx: bits [00, 12): 0x%x\n", pageoffset(vaddr, 0));
 }
 
 extern "C" void kernel_main() {
@@ -41,30 +41,26 @@ extern "C" void kernel_main() {
     console.printf("lfb: %p\n", lfb);
     console.printf("Current Level: %i\n", getCurrentEL());
     console.printf("_end: %p, _data: %p\n", &_end, &_data);
-    int i = 0;
+    int i = 0xdeadbeef;
+    int a = 0xf00dd00d;
     console.printf("stack addr: %p\n", &i);
+    console.printf("stack addr: %p\n", &a);
 
-    unsigned long* ttbr0_el1;
-    asm volatile ("mrs %0, ttbr0_el1" : "=r" (ttbr0_el1));
-    console.printf("l1 addr: %x\n", ttbr0_el1);
+    int* addr = (int*) (0xffffffffffe01fdc - 8);
+    for (int j = 0; j < 10; ++j) {
+        console.printf("addr[%i] 0x%x\n", j, addr[j]);
+    }
 
-    unsigned long l1_entry = *ttbr0_el1;
-    console.printf("l1 entry: 0x%x\n", l1_entry);
-
-    unsigned long l2_addr = (unsigned long) ((l1_entry >> 12) << 12);
-    console.printf("l2 addr: %p\n", l2_addr);
-
-    unsigned long l2_entry = *((unsigned long*) l2_addr);
-    console.printf("l2 entry: 0x%x\n", l2_entry);
-
-    unsigned long l3_addr = (unsigned long) ((l2_entry >> 12) << 12);
-    console.printf("l3 addr: %p\n", l3_addr);
-
-    int idx = 0;
-    unsigned long l3_entry = *((unsigned long*) (l3_addr + idx));
-    console.printf("l3 entry @ %i: 0x%x\n", idx, l3_entry);
-
-    dissect_vaddr(console, (unsigned long) &i);
+    dissect_vaddr(console, (unsigned long) KERNEL_UART0_DR);
+    
+    char *s = (char*) "Writing through MMIO mapped in higher half!\n";
+    // test mapping
+    while(*s) {
+        /* wait until we can send */
+        do{asm volatile("nop");}while(*KERNEL_UART0_FR&0x20);
+        /* write the character to the buffer */
+        *KERNEL_UART0_DR=*s++;
+    }
     
     // echo everything back
     while (true) {
