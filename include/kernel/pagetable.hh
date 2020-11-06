@@ -9,13 +9,13 @@
 #define PAGEOFFMASK     (PAGESIZE - 1)
 
 // Permission flags: define whether page is accessible
-#define PTE_P           0x1UL    // entry is Present
-#define PTE_W           0x2UL    // entry is Writeable
-#define PTE_U           0x4UL    // entry is User-accessible
-#define PTE_PWU         0x7UL    // PTE_P | PTE_W | PTE_U
+#define PTE_P           (1<<0)    // entry is Present
+#define PTE_W           (1<<1)    // entry is Writeable
+#define PTE_U           (1<<6)    // entry is User-accessible
+#define PTE_PWU         (PTE_P | PTE_W | PTE_U)    // PTE_P | PTE_W | PTE_U
 
 // Accessed flags: automatically turned on by processor
-#define PTE_A           0x20UL   // entry was Accessed (read/written)
+#define PTE_A           (1<<10)   // entry was Accessed (read/written)
 #define PTE_D           0x40UL   // entry was Dirtied (written)
 
 // Other special-purpose flags
@@ -34,8 +34,8 @@
 #define PTE_PS_PAMASK   0x000FFFFFFFFFE000UL // physical address in PS entry
 
 #define VA_LOWMIN       0UL                  // min low canonical address
-#define VA_LOWMAX       0x00007FFFFFFFFFFFUL // max low canonical address
-#define VA_LOWEND       0x0000800000000000UL // one past `VA_LOWMAX`
+#define VA_LOWMAX       0x0000007fffffffffUL // max low canonical address
+#define VA_LOWEND       0x0000008000000000UL // one past `VA_LOWMAX`
 #define VA_HIGHMIN      0xFFFFFF8000000000UL // min high canonical address
 #define VA_HIGHMAX      0xFFFFFFFFFFFFFFFFUL // max high canonical address
 #define VA_NONCANONMAX  0x0000FFFFFFFFFFFFUL // max non-canonical address

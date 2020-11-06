@@ -34,6 +34,7 @@ extern pageinfo pages[NPAGES];
 //    Returns true iff `pa` is an allocatable physical address.
 bool allocatable_physical_address(uintptr_t pa);
 
-void* kalloc(size_t sz);
+// allocates a kernel page, returns nullptr on failure
+void* kalloc_page();
 
 #endif

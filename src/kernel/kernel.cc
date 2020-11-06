@@ -2,6 +2,7 @@
 #include "kernel/uart.hh"
 #include "kernel/mmu.hh"
 #include "kernel/lfb.hh"
+#include "kernel/vmiter.hh"
 #include "common/console.hh"
 
 #include "common/types.hh"
@@ -11,6 +12,8 @@
 #define KERNEL_UART0_FR        ((volatile unsigned int*)0xFFFFFFFFFFE00018)
 
 extern volatile unsigned char _data;
+
+// marks what we'll pretend is the beginning of physical memory
 extern volatile unsigned char _end;
 
 // Memory state
@@ -46,13 +49,21 @@ extern "C" void kernel_main() {
     console.printf("stack addr: %p\n", &i);
     console.printf("stack addr: %p\n", &a);
 
-    int* addr = (int*) (0xffffffffffe01fdc - 8);
+    int* addr = (int*) (0xffffffffffe01fbc - 8);
     for (int j = 0; j < 10; ++j) {
         console.printf("addr[%i] 0x%x\n", j, addr[j]);
     }
 
-    dissect_vaddr(console, (unsigned long) KERNEL_UART0_DR);
-    
+    // identity map the kernel, skipping 0x0 (nullptr)
+    // for (vmiter it((pagetable*) &_end, 0x1000); it.va() < MEMSIZE_PHYSICAL; it += PAGESIZE) {
+    //     it.map(it.va(), PTE_A | PTE_PWU | (3<<8));
+    // }
+
+    for (vmiter it((pagetable*) &_end, 0x1000); it.va() < MEMSIZE_PHYSICAL; it += PAGESIZE) {
+        console.printf("va: %p, pa: %p\n", it.va(), it.pa());
+        console.printf("user: %i, writable: %i, present: %i\n", it.user(), it.writable(), it.present());
+    }
+
     char *s = (char*) "Writing through MMIO mapped in higher half!\n";
     // test mapping
     while(*s) {
@@ -74,7 +85,7 @@ extern "C" void kernel_main() {
 #define EXTPHYSMEM      0x00100000
 
 bool reserved_physical_address(uintptr_t pa) {
-    return pa < PAGESIZE || (pa >= IOPHYSMEM && pa < EXTPHYSMEM);
+    return pa < PAGESIZE;// || (pa >= IOPHYSMEM && pa < EXTPHYSMEM);
 }
 
 // allocatable_physical_address(pa)
@@ -84,17 +95,14 @@ bool reserved_physical_address(uintptr_t pa) {
 bool allocatable_physical_address(uintptr_t pa) {
     return !reserved_physical_address(pa)
         && (pa < KERNEL_START_ADDR
-            || pa >= round_up((uintptr_t) _end, PAGESIZE))
+            || pa >= round_up((uintptr_t) &_end, PAGESIZE))
         && (pa < KERNEL_STACK_TOP - PAGESIZE
             || pa >= KERNEL_STACK_TOP)
         && pa < MEMSIZE_PHYSICAL;
 }
 
-void* kalloc(size_t sz) {
-    if (sz > PAGESIZE) {
-        return nullptr;
-    }
-
+void* kalloc_page() {
+    uart_puts("Kalloc'd page\n");
     for (uintptr_t pa = 0; pa != MEMSIZE_PHYSICAL; pa += PAGESIZE) {
         if (allocatable_physical_address(pa)
             && !pages[pa / PAGESIZE].used()) {

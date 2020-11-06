@@ -52,6 +52,10 @@ void Console::putc(uint32_t charX, uint32_t charY, char c, unsigned int textColo
         case '\r':
             char_xpos = 0;
             break;
+        
+        case '\t':
+            char_xpos = round_up(char_xpos, 4);
+            break;
 
         default:
             // get the bitmap for this character

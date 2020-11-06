@@ -2,6 +2,7 @@
 #include "kernel/uart.hh"
 #include "kernel/mmu.hh"
 #include "kernel/pagetable.hh"
+#include "kernel/vmiter.hh"
 
 #define PAGESIZE    4096
 
@@ -46,18 +47,16 @@ void mmu_init()
     // TTBR0, identity L1
     pagetables[0].entry[0] = (pageentry_t) (&pagetables[2]) |    // physical address
         PT_PAGE |     // it has the "Present" flag, which must be set, and we have area in it mapped by pages
-        PT_AF   |     // accessed flag. Without this we're going to have a Data Abort exception
-        PT_USER |     // non-privileged
-        PT_ISH  |     // inner shareable
-        PT_MEM;       // normal memory
+        PTE_A   |     // accessed flag. Without this we're going to have a Data Abort exception
+        PTE_U   |     // non-privileged
+        PT_ISH;       // inner shareable
 
     // identity L2, first 2M block
     pagetables[2].entry[0] = (pageentry_t) (&pagetables[3]) | // physical address
         PT_PAGE |     // we have area in it mapped by pages
-        PT_AF   |     // accessed flag
-        PT_USER |     // non-privileged
-        PT_ISH  |     // inner shareable
-        PT_MEM;       // normal memory
+        PTE_A   |     // accessed flag
+        PTE_U   |     // non-privileged
+        PT_ISH;       // inner shareable
 
     // identity L2 2M blocks
     b = MMIO_BASE >> SECTION_SHIFT;
@@ -65,18 +64,17 @@ void mmu_init()
     for (r = 1; r < 512; r++) {
         pagetables[2].entry[r] = (pageentry_t) ((r << SECTION_SHIFT)) |  // physical address
         PT_BLOCK |    // map 2M block
-        PT_AF    |    // accessed flag
-        PT_NX    |    // no execute
-        PT_USER  |    // non-privileged
+        PTE_A    |    // accessed flag
+        PTE_U    |    // non-privileged
         (r >= b ? PT_OSH | PT_DEV : PT_ISH | PT_MEM); // different attributes for device memory
     }
 
     // identity L3
-    for (r = 0; r < 512; r++) {
+    for (r = 1; r < 512; r++) {
         pagetables[3].entry[r] = (pageentry_t) (r * PAGESIZE) |   // physical address
         PT_PAGE |     // map 4k
-        PT_AF   |     // accessed flag
-        PT_USER |     // non-privileged
+        PTE_A   |     // accessed flag
+        PTE_U   |     // non-privileged
         PT_ISH  |     // inner shareable
         ((r < 0x80 || r >= data_page) ? PT_RW | PT_NX : PT_RO); // different for code and data
     }
@@ -84,7 +82,7 @@ void mmu_init()
     // TTBR1, kernel L1 @ index 511
     pagetables[1].entry[511] = (pageentry_t) (&pagetables[4]) | // physical address
         PT_PAGE |     // we have area in it mapped by pages
-        PT_AF   |     // accessed flag
+        PTE_A   |     // accessed flag
         PT_KERNEL |   // privileged
         PT_ISH  |     // inner shareable
         PT_MEM;       // normal memory
@@ -92,7 +90,7 @@ void mmu_init()
     // kernel L2 @ index 511
     pagetables[4].entry[511] = (pageentry_t) (&pagetables[5]) |   // physical address
         PT_PAGE |     // we have area in it mapped by pages
-        PT_AF   |     // accessed flag
+        PTE_A   |     // accessed flag
         PT_KERNEL |   // privileged
         PT_ISH  |     // inner shareable
         PT_MEM;       // normal memory
@@ -100,7 +98,7 @@ void mmu_init()
     // kernel L3 @ index 0: map a page of MMIO addresses
     pagetables[5].entry[0] = (pageentry_t) (MMIO_BASE + 0x00201000) |   // physical address
         PT_PAGE |     // map 4k
-        PT_AF   |     // accessed flag
+        PTE_A   |     // accessed flag
         PT_NX   |     // no execute
         PT_KERNEL |   // privileged
         PT_OSH  |     // outter shareable
@@ -109,11 +107,10 @@ void mmu_init()
     // kernel L3 @ index 1: map a page of the stack
     pagetables[5].entry[1] = (pageentry_t) (0x7F000) |   // physical address
         PT_PAGE |     // map 4k
-        PT_AF   |     // accessed flag
+        PTE_A   |     // accessed flag
         PT_NX   |     // no execute
         PT_KERNEL |   // privileged
-        PT_ISH  |     // outter shareable
-        PT_MEM;       // device memory
+        PT_ISH;       // outter shareable
 
     /* SECTION: setup system registers to enable MMU */
 
@@ -132,9 +129,20 @@ void mmu_init()
         (0x44 << 16);    // AttrIdx=2: non cacheable
     asm volatile ("msr mair_el1, %0" : : "r" (r));
 
+    // check if hardware can manage the access or dirty flags
+    unsigned long q;
+    asm volatile("mrs %0, ID_AA64MMFR1_EL1": "=r" (q));
+    if (q & 0b1111 == 0) {
+        uart_puts("no support\n");
+    } else {
+        uart_puts("at least some support\n");
+    }
+
     // next, specify mapping characteristics in translate control register
     //TCR_T0SZ | TCR_T1SZ;
-    r = (0b00LL << 37)  | // TBI=0, no tagging
+    r = (0b1LL << 40)   | // HD=1, turn on hardware management of dirty
+        (0b1LL << 39)   | // HA=1, turn on hardware management of access flag
+        (0b00LL << 37)  | // TBI=0, no tagging
         (b << 32)       | // IPS=autodetected
         TCR_TG1_4K      | // TG1=4k
         (0b11LL << 28)  | // SH1=3 inner
@@ -152,10 +160,10 @@ void mmu_init()
 
     // tell the MMU where our translation tables are
     // lower half, user space
-    asm volatile ("msr ttbr0_el1, %0" : : "r" ((unsigned long)&pagetables[0]));
+    asm volatile ("msr ttbr0_el1, %0" : : "r" ((unsigned long) &pagetables[0]));
     
     // upper half, kernel space
-    asm volatile ("msr ttbr1_el1, %0" : : "r" ((unsigned long)&pagetables[1]));
+    asm volatile ("msr ttbr1_el1, %0" : : "r" ((unsigned long) &pagetables[1]));
 
     // finally, toggle some bits in system control register to enable page translation
     asm volatile ("dsb ish; isb; mrs %0, sctlr_el1" : "=r" (r));

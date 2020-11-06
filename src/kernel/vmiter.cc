@@ -72,18 +72,18 @@ int vmiter::try_map(uintptr_t pa, int perm) {
     if (pa == (uintptr_t) -1 && perm == 0) {
         pa = 0;
     }
-    // assert(!(va_ & PAGEOFFMASK));
+    assert(!(va_ & PAGEOFFMASK));
     if (perm & PTE_P) {
-        // assert(pa != (uintptr_t) -1);
-        // assert((pa & PTE_PAMASK) == pa);
+        assert(pa != (uintptr_t) -1);
+        assert((pa & PTE_PAMASK) == pa);
     } else {
-        // assert(!(pa & PTE_P));
+        assert(!(pa & PTE_P));
     }
-    // assert(!(perm & ~perm_ & (PTE_P | PTE_W | PTE_U)));
+    //assert(!(perm & ~perm_ & (PTE_P | PTE_W | PTE_U)));
 
     while (level_ > 0 && perm) {
         // assert(!(*pep_ & PTE_P));
-        pagetable* pt = (pagetable*) kalloc(PAGESIZE);
+        pagetable* pt = (pagetable*) kalloc_page();
         if (!pt) {
             return -1;
         }
