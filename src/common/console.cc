@@ -2,6 +2,9 @@
 #include "common/stdlib.hh"
 
 // initialize the console
+Console::Console() {
+    console_addr = 0x00;
+}
 Console::Console(uint64_t addr) {
     console_addr = addr;
 }

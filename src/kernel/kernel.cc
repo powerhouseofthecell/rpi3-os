@@ -39,38 +39,20 @@ extern "C" void kernel_main() {
     mmu_init();
     lfb_init();
 
+    // initialize the console now that the lfb has been set
     Console console((uint64_t) lfb);
     
     console.printf("lfb: %p\n", lfb);
     console.printf("Current Level: %i\n", getCurrentEL());
     console.printf("_end: %p, _data: %p\n", &_end, &_data);
-    int i = 0xdeadbeef;
-    int a = 0xf00dd00d;
-    console.printf("stack addr: %p\n", &i);
-    console.printf("stack addr: %p\n", &a);
-
-    int* addr = (int*) (0xffffffffffe01fbc - 8);
-    for (int j = 0; j < 10; ++j) {
-        console.printf("addr[%i] 0x%x\n", j, addr[j]);
-    }
 
     // identity map the kernel, skipping 0x0 (nullptr)
-    // for (vmiter it((pagetable*) &_end, 0x1000); it.va() < MEMSIZE_PHYSICAL; it += PAGESIZE) {
-    //     it.map(it.va(), PTE_A | PTE_PWU | (3<<8));
-    // }
-
     for (vmiter it((pagetable*) &_end, 0x1000); it.va() < MEMSIZE_PHYSICAL; it += PAGESIZE) {
-        console.printf("va: %p, pa: %p\n", it.va(), it.pa());
-        console.printf("user: %i, writable: %i, present: %i\n", it.user(), it.writable(), it.present());
-    }
-
-    char *s = (char*) "Writing through MMIO mapped in higher half!\n";
-    // test mapping
-    while(*s) {
-        /* wait until we can send */
-        do{asm volatile("nop");}while(*KERNEL_UART0_FR&0x20);
-        /* write the character to the buffer */
-        *KERNEL_UART0_DR=*s++;
+        if (it.va() < 0x80000 || it.va() >= (uintptr_t) &_data) {
+            it.map(it.va(), PTE_PAGE | PTE_A | PTE_PWU | (3<<8));
+        } else {
+            it.map(it.va(), PTE_PAGE | PTE_A | PTE_PRU | (3<<8));
+        } 
     }
     
     // echo everything back

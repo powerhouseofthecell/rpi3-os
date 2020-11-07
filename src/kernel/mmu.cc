@@ -46,16 +46,16 @@ void mmu_init()
 
     // TTBR0, identity L1
     pagetables[0].entry[0] = (pageentry_t) (&pagetables[2]) |    // physical address
-        PT_PAGE |     // it has the "Present" flag, which must be set, and we have area in it mapped by pages
+        PTE_PAGE|
         PTE_A   |     // accessed flag. Without this we're going to have a Data Abort exception
-        PTE_U   |     // non-privileged
+        PTE_PWU |     // non-privileged
         PT_ISH;       // inner shareable
 
-    // identity L2, first 2M block
+    // identity L2, first 2M block : our OS assumes this is all of physical memory
     pagetables[2].entry[0] = (pageentry_t) (&pagetables[3]) | // physical address
-        PT_PAGE |     // we have area in it mapped by pages
+        PTE_PAGE|
         PTE_A   |     // accessed flag
-        PTE_U   |     // non-privileged
+        PTE_PWU |     // non-privileged
         PT_ISH;       // inner shareable
 
     // identity L2 2M blocks
@@ -63,27 +63,40 @@ void mmu_init()
     // skip 0th, since that's above
     for (r = 1; r < 512; r++) {
         pagetables[2].entry[r] = (pageentry_t) ((r << SECTION_SHIFT)) |  // physical address
-        PT_BLOCK |    // map 2M block
+        PTE_BLOCK|
+        PTE_P    |    // map 2M block
         PTE_A    |    // accessed flag
         PTE_U    |    // non-privileged
         (r >= b ? PT_OSH | PT_DEV : PT_ISH | PT_MEM); // different attributes for device memory
     }
 
-    // identity L3
+    // identity L3, skipping 0x0 for debugging
+    pagetables[3].entry[0] = (pageentry_t) 0x0;
     for (r = 1; r < 512; r++) {
-        pagetables[3].entry[r] = (pageentry_t) (r * PAGESIZE) |   // physical address
-        PT_PAGE |     // map 4k
-        PTE_A   |     // accessed flag
-        PTE_U   |     // non-privileged
-        PT_ISH  |     // inner shareable
-        ((r < 0x80 || r >= data_page) ? PT_RW | PT_NX : PT_RO); // different for code and data
+        if (r < 0x80 || r >= data_page) {
+            pagetables[3].entry[r] = (pageentry_t) (r * PAGESIZE) |   // physical address
+                PTE_PAGE|
+                PTE_P   |
+                PTE_U   |
+                PTE_A   |   // accessed flag
+                PT_ISH  |   // inner shareable
+                PTE_W;      // writeable
+        } else {
+            pagetables[3].entry[r] = (pageentry_t) (r * PAGESIZE) |   // physical address
+                PTE_PAGE|
+                PTE_P   |
+                PTE_U   |
+                PTE_A   |   // accessed flag
+                PT_ISH  |   // inner shareable
+                PTE_R;      // read-only
+        }
+        
     }
 
     // TTBR1, kernel L1 @ index 511
     pagetables[1].entry[511] = (pageentry_t) (&pagetables[4]) | // physical address
         PT_PAGE |     // we have area in it mapped by pages
         PTE_A   |     // accessed flag
-        PT_KERNEL |   // privileged
         PT_ISH  |     // inner shareable
         PT_MEM;       // normal memory
 
@@ -91,7 +104,6 @@ void mmu_init()
     pagetables[4].entry[511] = (pageentry_t) (&pagetables[5]) |   // physical address
         PT_PAGE |     // we have area in it mapped by pages
         PTE_A   |     // accessed flag
-        PT_KERNEL |   // privileged
         PT_ISH  |     // inner shareable
         PT_MEM;       // normal memory
 
@@ -100,7 +112,6 @@ void mmu_init()
         PT_PAGE |     // map 4k
         PTE_A   |     // accessed flag
         PT_NX   |     // no execute
-        PT_KERNEL |   // privileged
         PT_OSH  |     // outter shareable
         PT_DEV;       // device memory
 
@@ -109,7 +120,6 @@ void mmu_init()
         PT_PAGE |     // map 4k
         PTE_A   |     // accessed flag
         PT_NX   |     // no execute
-        PT_KERNEL |   // privileged
         PT_ISH;       // outter shareable
 
     /* SECTION: setup system registers to enable MMU */
@@ -130,13 +140,13 @@ void mmu_init()
     asm volatile ("msr mair_el1, %0" : : "r" (r));
 
     // check if hardware can manage the access or dirty flags
-    unsigned long q;
-    asm volatile("mrs %0, ID_AA64MMFR1_EL1": "=r" (q));
-    if (q & 0b1111 == 0) {
-        uart_puts("no support\n");
-    } else {
-        uart_puts("at least some support\n");
-    }
+    // unsigned long q;
+    // asm volatile("mrs %0, ID_AA64MMFR1_EL1": "=r" (q));
+    // if (q & 0b1111 == 0) {
+    //     uart_puts("no support\n");
+    // } else {
+    //     uart_puts("at least some support\n");
+    // }
 
     // next, specify mapping characteristics in translate control register
     //TCR_T0SZ | TCR_T1SZ;

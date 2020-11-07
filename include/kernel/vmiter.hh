@@ -167,7 +167,7 @@ inline bool vmiter::present() const {
     return (*pep_ & PTE_P) == PTE_P;
 }
 inline bool vmiter::writable() const {
-    return (*pep_ & (PTE_P | PTE_W)) == (PTE_P | PTE_W);
+    return (*pep_ & PTE_P == PTE_P) && ((*pep_ & (1<<7)) == 0x0);
 }
 inline bool vmiter::user() const {
     return (*pep_ & (PTE_P | PTE_U)) == (PTE_P | PTE_U);

@@ -10,15 +10,20 @@
 
 // Permission flags: define whether page is accessible
 #define PTE_P           (1<<0)    // entry is Present
-#define PTE_W           (1<<1)    // entry is Writeable
+#define PTE_W           (0<<7)    // entry is Writeable
+#define PTE_R           (1<<7)    // entry is Read-Only
 #define PTE_U           (1<<6)    // entry is User-accessible
 #define PTE_PWU         (PTE_P | PTE_W | PTE_U)    // PTE_P | PTE_W | PTE_U
+#define PTE_PRU         (PTE_P | PTE_R | PTE_U)    // PTE_P | PTE_R | PTE_U
+#define PTE_PAGE        (1<<1)
+#define PTE_BLOCK       (0<<1)
 
 // Accessed flags: automatically turned on by processor
 #define PTE_A           (1<<10)   // entry was Accessed (read/written)
-#define PTE_D           0x40UL   // entry was Dirtied (written)
+#define PTE_D           (0<<0)   // entry was Dirtied (written)
 
 // Other special-purpose flags
+#define PTE_NX          (1<<54)  // entry execution disabled
 #define PTE_PS          0x80UL   // entry has a large Page Size
 #define PTE_PWT         0x8UL
 #define PTE_PCD         0x10UL

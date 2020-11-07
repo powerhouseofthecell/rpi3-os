@@ -26,6 +26,7 @@ public:
     uint32_t char_ypos = 0;
 
     // initialize a Console object (with the provided console address)
+    Console();
     Console(uint64_t addr);
 
     void setTextColor(int color);
