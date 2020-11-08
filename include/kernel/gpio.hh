@@ -3,7 +3,6 @@
 #include "kernel/mmu.hh"
 
 #define MMIO_BASE       0x3F000000
-#define PBASE 			(VA_START + DEVICE_BASE)
 
 #define GPFSEL0         ((volatile unsigned int*)(MMIO_BASE+0x00200000))
 #define GPFSEL1         ((volatile unsigned int*)(MMIO_BASE+0x00200004))

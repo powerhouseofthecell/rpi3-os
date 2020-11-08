@@ -24,7 +24,9 @@ extern volatile unsigned char _end;
 
 pageinfo pages[NPAGES];
 
-void dissect_vaddr(Console console, unsigned long vaddr) {
+void dissect_vaddr(unsigned long vaddr) {
+    Console console((uint64_t) lfb);
+
     console.printf("dissecting           : %p\n", vaddr);
     console.printf("rg sel: bits [39, 64): 0x%x\n", vaddr >> 39);
     console.printf("l1 idx: bits [30, 39): 0x%x\n", pageindex(vaddr, 2));
@@ -33,30 +35,95 @@ void dissect_vaddr(Console console, unsigned long vaddr) {
     console.printf("pa idx: bits [00, 12): 0x%x\n", pageoffset(vaddr, 0));
 }
 
+extern "C" void _enable_interrupts();
+
+#define PERIPHERAL_BASE     ((uint64_t)0x3F000000)
+#define IRQ_BASIC_PENDING	(PERIPHERAL_BASE+0x0000B200)
+#define IRQ_PENDING_1		(PERIPHERAL_BASE+0x0000B204)
+#define IRQ_PENDING_2		(PERIPHERAL_BASE+0x0000B208)
+#define FIQ_CONTROL		    (PERIPHERAL_BASE+0x0000B20C)
+#define ENABLE_IRQS_1		(PERIPHERAL_BASE+0x0000B210)
+#define ENABLE_IRQS_2		(PERIPHERAL_BASE+0x0000B214)
+#define ENABLE_BASIC_IRQS	(PERIPHERAL_BASE+0x0000B218)
+#define DISABLE_IRQS_1		(PERIPHERAL_BASE+0x0000B21C)
+#define DISABLE_IRQS_2		(PERIPHERAL_BASE+0x0000B220)
+#define DISABLE_BASIC_IRQS	(PERIPHERAL_BASE+0x0000B224)
+
+#define SYSTEM_TIMER_IRQ_0	(1 << 0)
+#define SYSTEM_TIMER_IRQ_1	(1 << 1)
+#define SYSTEM_TIMER_IRQ_2	(1 << 2)
+#define SYSTEM_TIMER_IRQ_3	(1 << 3)
+
+#define TIMER_CS        (PERIPHERAL_BASE+0x00003000)
+#define TIMER_CLO       (PERIPHERAL_BASE+0x00003004)
+#define TIMER_CHI       (PERIPHERAL_BASE+0x00003008)
+#define TIMER_C0        (PERIPHERAL_BASE+0x0000300C)
+#define TIMER_C1        (PERIPHERAL_BASE+0x00003010)
+#define TIMER_C2        (PERIPHERAL_BASE+0x00003014)
+#define TIMER_C3        (PERIPHERAL_BASE+0x00003018)
+
+#define TIMER_CS_M0	(1 << 0)
+#define TIMER_CS_M1	(1 << 1)
+#define TIMER_CS_M2	(1 << 2)
+#define TIMER_CS_M3	(1 << 3)
+
+const uint32_t interval = 200000;
+uint32_t timerVal = 0;
+
+extern "C" void _put32(uint64_t addr, uint32_t val);
+extern "C" uint32_t _get32(uint64_t addr);
+
+void init_interrupts() {
+    // initialize the timer
+    timerVal = _get32(TIMER_CLO);
+    timerVal += interval;
+    _put32(TIMER_C1, timerVal);
+
+    // enables irqs in the irq controller
+    _put32(ENABLE_IRQS_1, SYSTEM_TIMER_IRQ_1);
+
+    // enables interrupts at the system level
+    _enable_interrupts();
+
+    // read which interrupts are waiting
+    uint32_t waiting = *((uint32_t*)IRQ_BASIC_PENDING);
+    uart_puts(itoa(waiting, 10));
+    uart_puts(" <= Basic Pending\n");
+
+    waiting = *((uint32_t*)IRQ_PENDING_1);
+    uart_puts(itoa(waiting, 10));
+    uart_puts(" <= 1 Pending\n");
+
+    waiting = *((uint32_t*)IRQ_PENDING_2);
+    uart_puts(itoa(waiting, 10));
+    uart_puts(" <= 2 Pending\n");
+
+}
+
 extern "C" void kernel_main() {
     // set up serial console and linear frame buffer
     uart_init();
-    mmu_init();
     lfb_init();
+
+    // initialize memory and the memory management unit
+    mmu_init();
+
+    // initialize interrupts
+    init_interrupts();
 
     // initialize the console now that the lfb has been set
     Console console((uint64_t) lfb);
+
+    // trigger exception
+    console.printf("val @ null: %i\n", *((int*) nullptr));
     
     console.printf("lfb: %p\n", lfb);
     console.printf("Current Level: %i\n", getCurrentEL());
     console.printf("_end: %p, _data: %p\n", &_end, &_data);
 
-    // identity map the kernel, skipping 0x0 (nullptr)
-    for (vmiter it((pagetable*) &_end, 0x1000); it.va() < MEMSIZE_PHYSICAL; it += PAGESIZE) {
-        if (it.va() < 0x80000 || it.va() >= (uintptr_t) &_data) {
-            it.map(it.va(), PTE_PAGE | PTE_A | PTE_PWU | (3<<8));
-        } else {
-            it.map(it.va(), PTE_PAGE | PTE_A | PTE_PRU | (3<<8));
-        } 
-    }
-    
     // echo everything back
     while (true) {
+        console.printf("Clock: %i\n", *(uint32_t*) TIMER_CLO);
         int c = toupper(uart_getc());
         uart_putc(c);
     }

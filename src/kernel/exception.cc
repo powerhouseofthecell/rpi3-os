@@ -3,8 +3,7 @@
 /**
  * common exception handler
  */
-extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long elr, unsigned long spsr, unsigned long far)
-{
+extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long elr, unsigned long spsr, unsigned long far) {
     // print out interruption type
     switch(type) {
         case 0: uart_puts("Synchronous"); break;
@@ -28,6 +27,7 @@ extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long
         case 0b101100: uart_puts("Floating point"); break;
         default: uart_puts("Unknown"); break;
     }
+
     // decode data abort cause
     if(esr>>26==0b100100 || esr>>26==0b100101) {
         uart_puts(", ");

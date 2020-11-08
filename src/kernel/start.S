@@ -1,7 +1,6 @@
 .section ".text.boot"
 
 .global _start
-
 _start:
     // read cpu id, stop slave cores
     mrs     x1, mpidr_el1
@@ -75,41 +74,64 @@ _start:
 4:  bl      kernel_main
     b       1b
 
-// important, code has to be properly aligned
-    .align 11
+// a macro to create vector entries
+.macro ventry idx label
+    .align    7
+    mov     x0, #\idx
+    mrs     x1, esr_el1
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       \label
+.endm
+
+// vectors for exception handling
+.align 11
 _vectors:
     // synchronous
-    .align  7
-    mov     x0, #0
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
+    ventry 0, exc_handler
 
     // IRQ
-    .align  7
-    mov     x0, #1
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
+    ventry 1, exc_handler
 
     // FIQ
-    .align  7
-    mov     x0, #2
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
+    ventry 2, exc_handler
 
     // SError
-    .align  7
-    mov     x0, #3
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
+    ventry 3, exc_handler
+
+    // other handlers/exceptions
+    ventry 4,   exc_handler
+    ventry 5,   exc_handler
+    ventry 6,   exc_handler
+    ventry 7,   exc_handler
+    ventry 8,   exc_handler
+    ventry 9,   exc_handler
+    ventry 10,  exc_handler
+    ventry 11,  exc_handler
+    ventry 12,  exc_handler
+    ventry 13,  exc_handler
+    ventry 14,  exc_handler
+    ventry 15,  exc_handler
+
+.global _enable_interrupts
+// turns on global interrupts
+_enable_interrupts:
+    msr daifclr, #2
+    ret
+
+.global _disable_interrupts
+// turns off global interrupts
+_disable_interrupts:
+    msr daifset, #2
+    ret
+
+.globl _put32
+_put32:
+	str w1,[x0]
+	ret
+
+.globl _get32
+_get32:
+	ldr w0,[x0]
+	ret

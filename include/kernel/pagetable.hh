@@ -30,10 +30,10 @@
 #define PTE_XD          0x8000000000000000UL // entry is eXecute Disabled
 
 // These flags are available for OS use (the processor ignores them):
-#define PTE_OS1         0x200UL
-#define PTE_OS2         0x400UL
-#define PTE_OS3         0x800UL
-// There are other flags too!
+#define PTE_OS1         (1<<55)
+#define PTE_OS2         (1<<56)
+#define PTE_OS3         (1<<57)
+#define PTE_OS4         (1<<58)
 
 #define PTE_PAMASK      0x000FFFFFFFFFF000UL // physical address in non-PS entry
 #define PTE_PS_PAMASK   0x000FFFFFFFFFE000UL // physical address in PS entry

@@ -11,6 +11,9 @@ static const unsigned int BLUE =  0xff0000;
 static const unsigned int RED =   0x0000ff;
 static const unsigned int GREEN = 0x00ff00;
 
+// an array of colors
+const unsigned int COLORS[3] = {RED, BLUE, GREEN};
+
 class Console {
 public:
     uint64_t console_addr = 0x00;
