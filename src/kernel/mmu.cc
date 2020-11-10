@@ -51,6 +51,12 @@ void mmu_init()
         PTE_PWU |     // non-privileged
         PT_ISH;       // inner shareable
 
+    pagetables[0].entry[1] = (pageentry_t) (&pagetables[6]) |    // physical address
+        PTE_PAGE|
+        PTE_A   |     // accessed flag. Without this we're going to have a Data Abort exception
+        PTE_PWU |     // non-privileged
+        PT_ISH;       // inner shareable
+
     // identity L2, first 2M block : our OS assumes this is all of physical memory
     pagetables[2].entry[0] = (pageentry_t) (&pagetables[3]) | // physical address
         PTE_PAGE|
@@ -68,6 +74,16 @@ void mmu_init()
         PTE_A    |    // accessed flag
         PTE_U    |    // non-privileged
         (r >= b ? PT_OSH | PT_DEV : PT_ISH | PT_MEM); // different attributes for device memory
+    }
+
+    // map other 2M blocks in L2
+    for (r = 0; r < 512; ++r) {
+        pagetables[6].entry[r] = (pageentry_t) (((r + 512) << SECTION_SHIFT)) |
+            PTE_BLOCK|
+            PTE_P    |
+            PTE_A    |
+            PTE_U    |
+            PT_OSH | PT_DEV;
     }
 
     // identity L3, skipping 0x0 for debugging

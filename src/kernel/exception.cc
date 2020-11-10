@@ -1,4 +1,5 @@
 #include "kernel/uart.hh"
+#include "common/stdlib.hh"
 
 /**
  * common exception handler
@@ -6,13 +7,19 @@
 extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long elr, unsigned long spsr, unsigned long far) {
     // print out interruption type
     switch(type) {
-        case 0: uart_puts("Synchronous"); break;
+        case 0: case 4: uart_puts("Synchronous"); break;
         case 1: uart_puts("IRQ"); break;
         case 2: uart_puts("FIQ"); break;
         case 3: uart_puts("SError"); break;
+        default: {
+            uart_puts("UNHANDLED EXCEPTION: ");
+            uart_puts(itoa(type, 10));
+            uart_puts("\n");
+            while(1);
+        }
     }
     uart_puts(": ");
-    // decode exception type (some, not all. See ARM DDI0487B_b chapter D10.2.28)
+
     switch(esr>>26) {
         case 0b000000: uart_puts("Unknown"); break;
         case 0b000001: uart_puts("Trapped WFI/WFE"); break;
@@ -29,15 +36,15 @@ extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long
     }
 
     // decode data abort cause
-    if(esr>>26==0b100100 || esr>>26==0b100101) {
+    if(esr>>26 == 0b100100 || esr>>26 == 0b100101) {
         uart_puts(", ");
-        switch((esr>>2)&0x3) {
+        switch((esr>>2) & 0x3) {
             case 0: uart_puts("Address size fault"); break;
             case 1: uart_puts("Translation fault"); break;
             case 2: uart_puts("Access flag fault"); break;
             case 3: uart_puts("Permission fault"); break;
         }
-        switch(esr&0x3) {
+        switch(esr & 0x3) {
             case 0: uart_puts(" at level 0"); break;
             case 1: uart_puts(" at level 1"); break;
             case 2: uart_puts(" at level 2"); break;
@@ -58,6 +65,7 @@ extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long
     uart_hex(far>>32);
     uart_hex(far);
     uart_puts("\n");
+    
     // no return from exception for now
     while(1);
 }

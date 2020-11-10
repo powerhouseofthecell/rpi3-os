@@ -3,6 +3,7 @@
 #include "kernel/mmu.hh"
 #include "kernel/lfb.hh"
 #include "kernel/vmiter.hh"
+#include "kernel/delays.hh"
 #include "common/console.hh"
 
 #include "common/types.hh"
@@ -36,6 +37,7 @@ void dissect_vaddr(unsigned long vaddr) {
 }
 
 extern "C" void _enable_interrupts();
+extern "C" void _disable_interrupts();
 
 #define PERIPHERAL_BASE     ((uint64_t)0x3F000000)
 #define IRQ_BASIC_PENDING	(PERIPHERAL_BASE+0x0000B200)
@@ -67,37 +69,52 @@ extern "C" void _enable_interrupts();
 #define TIMER_CS_M2	(1 << 2)
 #define TIMER_CS_M3	(1 << 3)
 
-const uint32_t interval = 200000;
-uint32_t timerVal = 0;
+#define ARM_TIMER_LOAD      (PERIPHERAL_BASE+0x0000B400)
+#define ARM_TIMER_VALUE     (PERIPHERAL_BASE+0x0000B404)
+#define ARM_TIMER_CONTROL   (PERIPHERAL_BASE+0x0000B408)
+#define ARM_TIMER_IRQ_CLEAR (PERIPHERAL_BASE+0x0000B40C)
 
-extern "C" void _put32(uint64_t addr, uint32_t val);
-extern "C" uint32_t _get32(uint64_t addr);
+#define LOCAL_TIMER             0x40000034
+#define LOCAL_TIMER_ENABLE      (1<<28)
+#define LOCAL_TIMER_IRQ_ENABLE  (1<<29)
+#define LOCAL_TIMER_RELOAD      (1<<31)
 
-void init_interrupts() {
-    // initialize the timer
-    timerVal = _get32(TIMER_CLO);
-    timerVal += interval;
-    _put32(TIMER_C1, timerVal);
+#define HZ 1000
 
-    // enables irqs in the irq controller
-    _put32(ENABLE_IRQS_1, SYSTEM_TIMER_IRQ_1);
+typedef struct {
+    uint32_t control_status;
+    uint32_t clear_reload;
+} local_timer_t;
 
+uint64_t ticks = 0;
+
+// enables timer interrupts
+void init_interrupts(uint32_t reloadVal) {
+    // only bits 0:27 can be used for reloadVal
+    assert(reloadVal < (1<<28));
+
+    // initialize the timer (local timer), enable it and interrupts
+    uint32_t* local_timer = (uint32_t*) LOCAL_TIMER;
+    *local_timer = reloadVal | LOCAL_TIMER_ENABLE | LOCAL_TIMER_IRQ_ENABLE;
+    
     // enables interrupts at the system level
     _enable_interrupts();
+}
 
-    // read which interrupts are waiting
-    uint32_t waiting = *((uint32_t*)IRQ_BASIC_PENDING);
-    uart_puts(itoa(waiting, 10));
-    uart_puts(" <= Basic Pending\n");
+extern "C" void irq_handler(unsigned long type) {
+    // this handler should only be called for IRQ
+    assert(type == 1);
 
-    waiting = *((uint32_t*)IRQ_PENDING_1);
-    uart_puts(itoa(waiting, 10));
-    uart_puts(" <= 1 Pending\n");
+    // increment our "clock's" ticks, up to 999999
+    ticks = (ticks + 1) % 1000000;
 
-    waiting = *((uint32_t*)IRQ_PENDING_2);
-    uart_puts(itoa(waiting, 10));
-    uart_puts(" <= 2 Pending\n");
+    // reset the timer
+    uint32_t* local_timer = (uint32_t*) 0x40000038;
+    *local_timer = (uint32_t) (LOCAL_TIMER_RELOAD | (1<<30));
 
+    Console console((uint64_t) lfb);
+    console.puts(54, 0, "Tick: ", BLACK, WHITE);
+    console.puts(60, 0, itoa(ticks, 10), BLACK, WHITE);
 }
 
 extern "C" void kernel_main() {
@@ -108,24 +125,17 @@ extern "C" void kernel_main() {
     // initialize memory and the memory management unit
     mmu_init();
 
-    // initialize interrupts
-    init_interrupts();
+    // initialize interrupts (timer)
+    init_interrupts(38400000 / HZ);
 
     // initialize the console now that the lfb has been set
-    Console console((uint64_t) lfb);
-
-    // trigger exception
-    console.printf("val @ null: %i\n", *((int*) nullptr));
-    
+    Console console((uint64_t) lfb);    
     console.printf("lfb: %p\n", lfb);
     console.printf("Current Level: %i\n", getCurrentEL());
     console.printf("_end: %p, _data: %p\n", &_end, &_data);
 
-    // echo everything back
+    // loop forever
     while (true) {
-        console.printf("Clock: %i\n", *(uint32_t*) TIMER_CLO);
-        int c = toupper(uart_getc());
-        uart_putc(c);
     }
 }
 
