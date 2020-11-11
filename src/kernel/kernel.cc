@@ -4,7 +4,6 @@
 #include "kernel/lfb.hh"
 #include "kernel/vmiter.hh"
 #include "kernel/delays.hh"
-#include "common/console.hh"
 
 #include "common/types.hh"
 #include "common/stdlib.hh"
@@ -13,8 +12,6 @@
 #define KERNEL_UART0_FR        ((volatile unsigned int*)0xFFFFFFFFFFE00018)
 
 extern volatile unsigned char _data;
-
-// marks what we'll pretend is the beginning of physical memory
 extern volatile unsigned char _end;
 
 // Memory state
@@ -26,14 +23,12 @@ extern volatile unsigned char _end;
 pageinfo pages[NPAGES];
 
 void dissect_vaddr(unsigned long vaddr) {
-    Console console((uint64_t) lfb);
-
-    console.printf("dissecting           : %p\n", vaddr);
-    console.printf("rg sel: bits [39, 64): 0x%x\n", vaddr >> 39);
-    console.printf("l1 idx: bits [30, 39): 0x%x\n", pageindex(vaddr, 2));
-    console.printf("l2 idx: bits [21, 30): 0x%x\n", pageindex(vaddr, 1));
-    console.printf("l3 idx: bits [12, 21): 0x%x\n", pageindex(vaddr, 0));
-    console.printf("pa idx: bits [00, 12): 0x%x\n", pageoffset(vaddr, 0));
+    printf("dissecting           : %p\n", vaddr);
+    printf("rg sel: bits [39, 64): 0x%x\n", vaddr >> 39);
+    printf("l1 idx: bits [30, 39): 0x%x\n", pageindex(vaddr, 2));
+    printf("l2 idx: bits [21, 30): 0x%x\n", pageindex(vaddr, 1));
+    printf("l3 idx: bits [12, 21): 0x%x\n", pageindex(vaddr, 0));
+    printf("pa idx: bits [00, 12): 0x%x\n", pageoffset(vaddr, 0));
 }
 
 extern "C" void _enable_interrupts();
@@ -79,7 +74,7 @@ extern "C" void _disable_interrupts();
 #define LOCAL_TIMER_IRQ_ENABLE  (1<<29)
 #define LOCAL_TIMER_RELOAD      (1<<31)
 
-#define HZ 1000
+#define HZ 100
 
 typedef struct {
     uint32_t control_status;
@@ -112,9 +107,8 @@ extern "C" void irq_handler(unsigned long type) {
     uint32_t* local_timer = (uint32_t*) 0x40000038;
     *local_timer = (uint32_t) (LOCAL_TIMER_RELOAD | (1<<30));
 
-    Console console((uint64_t) lfb);
-    console.puts(54, 0, "Tick: ", BLACK, WHITE);
-    console.puts(60, 0, itoa(ticks, 10), BLACK, WHITE);
+    puts(54, 0, "Tick: ", BLACK, WHITE);
+    puts(60, 0, itoa(ticks, 10), BLACK, WHITE);
 }
 
 extern "C" void kernel_main() {
@@ -125,14 +119,13 @@ extern "C" void kernel_main() {
     // initialize memory and the memory management unit
     mmu_init();
 
+    // initialize the console now that the lfb has been set 
+    printf("lfb: %p\n", fbInfo.addr);
+    printf("Current Level: %i\n", getCurrentEL());
+    printf("_end: %p, _data: %p\n", &_end, &_data);
+
     // initialize interrupts (timer)
     init_interrupts(38400000 / HZ);
-
-    // initialize the console now that the lfb has been set
-    Console console((uint64_t) lfb);    
-    console.printf("lfb: %p\n", lfb);
-    console.printf("Current Level: %i\n", getCurrentEL());
-    console.printf("_end: %p, _data: %p\n", &_end, &_data);
 
     // loop forever
     while (true) {

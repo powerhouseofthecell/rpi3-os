@@ -3,7 +3,6 @@
 // the global font to use for this system
 psf_t* font = (psf_t*)&_binary_font_psf_start;
 
-unsigned char *lfb;
 framebufferInfo fbInfo;
 
 /**
@@ -58,97 +57,13 @@ void lfb_init() {
     if(mbox_call(MBOX_CH_PROP) && mbox[20]==32 && mbox[28]!=0) {
         fbInfo.width = mbox[5];
         fbInfo.height = mbox[6];
-        fbInfo.pitch = mbox[33];
+        
         fbInfo.depth = mbox[20];
+        fbInfo.pitch = mbox[33];
 
         mbox[28] &= 0x3FFFFFFF;
-        lfb = (unsigned char*)((unsigned long) mbox[28]);
+        fbInfo.addr = (uint64_t)((unsigned long) mbox[28]);
     } else {
         uart_puts("Unable to set screen resolution to 1024x768x32\n");
-    }
-}
-
-/**
- * Display a string using fixed size PSF
- */
-void lfb_print(int x, int y, const char *s) {
-    int color = 0xFFFFFF;
-    int rev_color = 0x00;
-
-    // draw next character if it's not zero
-    while(*s) {
-        // get the offset of the glyph
-        unsigned char *glyph = (unsigned char*)&_binary_font_psf_start +
-         font->headersize + (*((unsigned char*) s) < font->numglyph ? *s : 0) * font->bytesperglyph;
-        // calculate the offset on screen
-        int offs = (y * fbInfo.pitch) + (x * 4);
-        // variables
-        unsigned int i, j, line, mask, bytesperline = (font->width + 7) / 8;
-
-        // handle carrige return
-        if (*s == '\r') {
-            x = 0;
-        } else if (*s == '\n') {
-            x = 0; y += font->height;
-        } else {
-            // display a character
-            for(j = 0; j < font->height; ++j){
-                // display one row
-                line = offs;
-                mask = 1 << (font->width - 1);
-
-                for(i = 0; i < font->width; ++i){
-                    // if bit set, we use white color, otherwise black
-                    *((unsigned int*)(lfb + line)) = ((int)*glyph) & mask ? color : rev_color;
-                    mask >>= 1;
-                    line += 4;
-                }
-                // adjust to next line
-                glyph += bytesperline;
-                offs += fbInfo.pitch;
-            }
-            x += (font->width+1);
-        }
-        // next character
-        s++;
-    }
-}
-
-// puts a single character to the lfb
-void lfb_putc(int x, int y, char c, int color, int rev_color) {
-    // get the offset of the glyph
-    unsigned char *glyph = (unsigned char*) &_binary_font_psf_start +
-        font->headersize + (((unsigned char)c) < font->numglyph ? c : 0) * font->bytesperglyph;
-
-    // calculate the offset on screen
-    int offs = (y * fbInfo.pitch) + (x * 4);
-
-    // variables
-    unsigned int i, j, line, mask, bytesperline = (font->width + 7) / 8;
-    
-    // handle carrige return and newline
-    if (c == '\r') {
-        x = 0;
-    } else if (c == '\n') {
-        x = 0;
-        y += font->height;
-    } else {
-        // display a character
-        for (j = 0; j < font->height; ++j) {
-            // display one row
-            line = offs;
-            mask = 1 << (font->width - 1);
-
-            for (i = 0; i < font->width; ++i) {
-                // if bit set, we use white color, otherwise black
-                *((unsigned int*)(lfb + line)) = ((int) *glyph) & mask ? color : rev_color;
-                mask >>= 1;
-                line += 4;
-            }
-            // adjust to next line
-            glyph += bytesperline;
-            offs += fbInfo.pitch;
-        }
-        x += (font->width + 1);
     }
 }

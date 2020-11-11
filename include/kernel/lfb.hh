@@ -1,5 +1,6 @@
 #ifndef LFB_HH
 #define LFB_HH
+#include "common/types.hh"
 #include "kernel/uart.hh"
 #include "kernel/mbox.hh"
 
@@ -38,6 +39,9 @@ extern volatile unsigned char _binary_font_sfn_start;
 // contains information about the framebuffer
 // there should be a single global one of these
 struct framebufferInfo {
+    // address of the framebuffer
+    uint64_t addr;
+
     // height of the console in pixels
     int height;
 
@@ -52,8 +56,6 @@ struct framebufferInfo {
 // define some lfb globals
 extern psf_t* font;
 
-// TODO: move the address of the framebuffer into a property of the fbInfo object
-extern unsigned char *lfb;
 extern framebufferInfo fbInfo;
 
 void lfb_init();
