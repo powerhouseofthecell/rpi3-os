@@ -23,19 +23,17 @@ extern volatile unsigned char _end;
 
 pageinfo pages[NPAGES];
 
-extern "C" void irq_handler(unsigned long type) {
-    // this handler should only be called for IRQ
-    assert(type == 1);
-
+extern "C" void irq_handler() {
     // increment our "clock's" ticks, up to 999999
     ticks = (ticks + 1) % 1000000;
 
     // reset the timer
+    // TODO: #define the magic numbers here
     uint32_t* local_timer = (uint32_t*) 0x40000038;
     *local_timer = (uint32_t) (LOCAL_TIMER_RELOAD | (1<<30));
 
-    puts(54, 0, "Tick: ", BLACK, WHITE);
-    puts(60, 0, itoa(ticks, 10), BLACK, WHITE);
+    puts(fbInfo.width / font->width - 13, 0, "Tick: ", BLACK, WHITE);
+    puts(fbInfo.width / font->width - 7, 0, itoa(ticks, 10), BLACK, WHITE);
 }
 
 // the main initialization function for our kernel

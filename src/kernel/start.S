@@ -1,3 +1,5 @@
+#include "kernel/start.hh"
+
 .section ".text.boot"
 
 .global _start
@@ -72,21 +74,27 @@ _start:
 
     // jump to CPP code, should not return
 4:  bl      kernel_main
-    b       1b
+    b       halt
 
-// a macro to create vector entries
-.macro ventry idx label
-    .align    7
-    mov     x0, #\idx
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       \label
-.endm
+// puts this cpu into low power mode
+halt:
+    wfe
+    b halt
+
+.global _enable_interrupts
+// turns on global interrupts
+_enable_interrupts:
+    msr daifclr, #2
+    ret
+
+.global _disable_interrupts
+// turns off global interrupts
+_disable_interrupts:
+    msr daifset, #2
+    ret
 
 .macro	kernel_entry
-	sub	sp, sp, #256
+	sub	sp, sp, #S_FRAME_SIZE
 	stp	x0, x1, [sp, #16 * 0]
 	stp	x2, x3, [sp, #16 * 1]
 	stp	x4, x5, [sp, #16 * 2]
@@ -122,68 +130,159 @@ _start:
 	ldp	x26, x27, [sp, #16 * 13]
 	ldp	x28, x29, [sp, #16 * 14]
 	ldr	x30, [sp, #16 * 15] 
-	add	sp, sp, #256
+	add	sp, sp, #S_FRAME_SIZE		
 	eret
 .endm
 
-// vectors for exception handling
-.align 11
-_vectors:
-    // synchronous
-    ventry 0, exc_handler
+// a macro to create vector entries
+.macro ventry label
+    .balign  0x80
+    bl      \label
+.endm
 
-    // IRQ
-    ventry 1, el1_irq
-
-    // FIQ
-    ventry 2, exc_handler
-
-    // SError
-    ventry 3, exc_handler
-
-    // other handlers/exceptions
-    ventry 4,   exc_handler
-    ventry 5,   exc_handler
-    ventry 6,   exc_handler
-    ventry 7,   exc_handler
-    ventry 8,   exc_handler
-    ventry 9,   exc_handler
-    ventry 10,  exc_handler
-    ventry 11,  exc_handler
-    ventry 12,  exc_handler
-    ventry 13,  exc_handler
-    ventry 14,  exc_handler
-    ventry 15,  exc_handler
-
-// wrapper around irq_handler
-el1_irq:
-	kernel_entry 
+// a wrapper for handling irqs
+irq_wrapper:
+	kernel_entry
 	bl	irq_handler
 	kernel_exit
 
-// puts this cpu into low power mode
-halt:
-    wfe
-    b halt
+// vectors for exception handling
+.balign 0x800
+_vectors:
+    ventry unhandled_exception_0
+    ventry irq_wrapper
+    ventry unhandled_exception_2
+    ventry unhandled_exception_3
 
-.global _enable_interrupts
-// turns on global interrupts
-_enable_interrupts:
-    msr daifclr, #2
-    ret
+    ventry unhandled_exception_4
+    ventry unhandled_exception_5
+    ventry unhandled_exception_6
+    ventry unhandled_exception_7
 
-.global _disable_interrupts
-// turns off global interrupts
-_disable_interrupts:
-    msr daifset, #2
-    ret
+    ventry unhandled_exception_8
+    ventry unhandled_exception_9
+    ventry unhandled_exception_10
+    ventry unhandled_exception_11
 
-.globl _put32
-_put32:
-	str w1,[x0]
-	ret
+    ventry unhandled_exception_12
+    ventry unhandled_exception_13
+    ventry unhandled_exception_14
+    ventry unhandled_exception_15
 
-.globl _get32
-_get32:
-	ldr w0,[x0]
-	ret
+// a block of exception handlers for unimplemented exceptions
+unhandled_exception_0:
+    mov     x0, #0
+    mrs     x1, esr_el1
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       exc_handler
+
+unhandled_exception_1:
+    mov     x0, #1
+    mrs     x1, esr_el1
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       exc_handler
+
+unhandled_exception_2:
+    mov     x0, #2
+    mrs     x1, esr_el1
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       exc_handler
+
+unhandled_exception_3:
+    mov     x0, #3
+    mrs     x1, esr_el1
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       exc_handler
+
+unhandled_exception_4:
+    mov     x0, #4
+    mrs     x1, esr_el1
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       exc_handler
+unhandled_exception_5:
+    mov     x0, #5
+    mrs     x1, esr_el1
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       exc_handler
+unhandled_exception_6:
+    mov     x0, #6
+    mrs     x1, esr_el1
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       exc_handler
+unhandled_exception_7:
+    mov     x0, #7
+    mrs     x1, esr_el1
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       exc_handler
+unhandled_exception_8:
+    mov     x0, #8
+    mrs     x1, esr_el1
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       exc_handler
+unhandled_exception_9:
+    mov     x0, #9
+    mrs     x1, esr_el1
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       exc_handler
+unhandled_exception_10:
+    mov     x0, #10
+    mrs     x1, esr_el1
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       exc_handler
+unhandled_exception_11:
+    mov     x0, #11
+    mrs     x1, esr_el1
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       exc_handler
+unhandled_exception_12:
+    mov     x0, #12
+    mrs     x1, esr_el1
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       exc_handler
+unhandled_exception_13:
+    mov     x0, #13
+    mrs     x1, esr_el1
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       exc_handler
+unhandled_exception_14:
+    mov     x0, #14
+    mrs     x1, esr_el1
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       exc_handler
+unhandled_exception_15:
+    mov     x0, #15
+    mrs     x1, esr_el1
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       exc_handler

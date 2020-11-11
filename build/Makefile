@@ -3,7 +3,7 @@ CC=$(TOOLCHAIN_PREFIX)-gcc
 
 SRCS = $(wildcard *.cc)
 OBJS = $(SRCS:.cc=.o)
-CFLAGS = -Wall -Wextra -O2 -ffreestanding -nostdinc -nostdlib -nostartfiles
+CFLAGS = -Wall -Wextra -O2 -ffreestanding -nostdinc -nostdlib -nostartfiles -g -ggdb
 
 KERNEL_NAME=kernel8
 
@@ -51,3 +51,6 @@ clean:
 
 run: build
 	qemu-system-aarch64 -M raspi3 -kernel $(KERNEL_NAME).img -serial stdio
+
+run-gdb: build
+	qemu-system-aarch64 -M raspi3 -kernel $(KERNEL_NAME).img -serial stdio -s -S
