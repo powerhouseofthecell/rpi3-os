@@ -93,3 +93,18 @@ void uart_hex(unsigned int d) {
         uart_putc(n);
     }
 }
+
+// display a binary value
+void uart_bin(uint64_t b) {
+    for (int i = 63; i >= 0; --i) {
+        if (((b >> i) & 0b1) == 1) {
+            uart_putc('1');
+        } else {
+            uart_putc('0');
+        }
+
+        if (i % 4 == 0) {
+            uart_putc(' ');
+        }
+    }
+}

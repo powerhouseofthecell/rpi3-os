@@ -22,6 +22,13 @@ extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long
     }
     uart_puts(": ");
 
+    // print out daif
+    uint64_t daif;
+    asm volatile("mrs %0, daif": "=r"(daif));
+    uart_puts("\nDAIF: ");
+    uart_bin(daif);
+    uart_puts("\n");
+
     switch(esr>>26) {
         case 0b000000: uart_puts("Unknown"); break;
         case 0b000001: uart_puts("Trapped WFI/WFE"); break;

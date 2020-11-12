@@ -4,15 +4,16 @@
 
 .global _start
 _start:
-    // read cpu id, stop slave cores
+    // read cpu id
     mrs     x1, mpidr_el1
-    and     x1, x1, #3
+    and     x1, x1, #0xFF
     cbz     x1, 2f
-    // cpu id > 0, stop
-1:  wfe
-    b       1b
-2:  // cpu id == 0
 
+    // cpu id > 0, disable interrupts, stop that cpu
+    bl      _disable_interrupts
+    b       halt
+
+2:  // cpu id == 0
     // set stack before our code
     ldr     x1, =_start
     mov     sp, x1
@@ -38,23 +39,28 @@ _start:
 5:  cmp     x0, #4
     beq     5f
     msr     sp_el1, x1
+
     // enable CNTP for EL1
     mrs     x0, cnthctl_el2
     orr     x0, x0, #3
     msr     cnthctl_el2, x0
     msr     cntvoff_el2, xzr
+
     // enable AArch64 in EL1
     mov     x0, #(1 << 31)      // AArch64
     orr     x0, x0, #(1 << 1)   // SWIO hardwired on Pi3
     msr     hcr_el2, x0
     mrs     x0, hcr_el2
+
     // Setup SCTLR access
     mov     x2, #0x0800
     movk    x2, #0x30d0, lsl #16
     msr     sctlr_el1, x2
+
     // setup exception handler
     ldr     x2, =_vectors
     msr     vbar_el1, x2
+
     // change execution level to EL1
     mov     x2, #0x3c4
     msr     spsr_el2, x2
@@ -78,7 +84,6 @@ _start:
 
 // puts this cpu into low power mode
 halt:
-    wfe
     b halt
 
 .global _enable_interrupts
@@ -111,6 +116,7 @@ _disable_interrupts:
 	stp	x26, x27, [sp, #16 * 13]
 	stp	x28, x29, [sp, #16 * 14]
 	str	x30, [sp, #16 * 15] 
+    bl _disable_interrupts
 .endm
 
 .macro	kernel_exit
@@ -137,7 +143,7 @@ _disable_interrupts:
 // a macro to create vector entries
 .macro ventry label
     .balign  0x80
-    bl      \label
+    b      \label
 .endm
 
 // a wrapper for handling irqs
