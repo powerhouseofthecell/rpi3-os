@@ -18,7 +18,7 @@ ASMSOURCES = $(wildcard $(KER_SRC)/*.S)
 OBJECTS += $(patsubst $(KER_SRC)/%.cc, $(OBJ_DIR)/%.o, $(KERSOURCES))
 OBJECTS += $(patsubst $(COMMON_SRC)/%.cc, $(OBJ_DIR)/%.o, $(COMMONSOURCES))
 OBJECTS += $(patsubst $(KER_SRC)/%.S, $(OBJ_DIR)/%.o, $(ASMSOURCES))
-OBJECTS += font_psf.o font_sfn.o
+OBJECTS += font_psf.o
 
 HEADERS = $(wildcard $(KER_HEAD)/*.h) $(wildcard $(KER_HEAD)/*.hh)
 
@@ -41,9 +41,6 @@ $(OBJ_DIR)/%.o: $(COMMON_SRC)/%.cc
 font_psf.o: font.psf
 	$(TOOLCHAIN_PREFIX)-ld -r -b binary -o font_psf.o font.psf
 
-font_sfn.o: font.sfn
-	$(TOOLCHAIN_PREFIX)-ld -r -b binary -o font_sfn.o font.sfn
-
 clean:
 	rm -rf $(OBJ_DIR) *.o
 	rm $(KERNEL_NAME).elf
@@ -52,5 +49,8 @@ clean:
 run: build
 	qemu-system-aarch64 -M raspi3 -kernel $(KERNEL_NAME).img -serial stdio
 
+run-debug: build
+	qemu-system-aarch64 -M raspi3 -kernel $(KERNEL_NAME).img -serial stdio -d int
+
 run-gdb: build
-	qemu-system-aarch64 -M raspi3 -kernel $(KERNEL_NAME).img -serial stdio -s -S
+	qemu-system-aarch64 -M raspi3 -kernel $(KERNEL_NAME).img -serial stdio -s -S -d int

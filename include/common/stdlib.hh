@@ -80,11 +80,15 @@ static const unsigned int BLUE =  0xff0000;
 static const unsigned int RED =   0x0000ff;
 static const unsigned int GREEN = 0x00ff00;
 
+// position of the console cursor
+extern uint32_t char_xpos;
+extern uint32_t char_ypos;
+
 // writes the provided pixel to the console @ (x, y)
 void write_pixel(uint32_t x, uint32_t y, uint32_t pixel);
 
 // clear the console
-void clear();
+void clear_console();
 
 // put a single character to the console
 // at position (charX, charY) (this is the char position, not the pixel position)

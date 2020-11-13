@@ -341,8 +341,8 @@ void putc(uint32_t charX, uint32_t charY, char c, unsigned int textColor, unsign
 
         default:
             // get the bitmap for this character
-            unsigned char* glyph = (unsigned char*) &_binary_font_psf_start +
-                font->headersize + (((unsigned char)c) < font->numglyph ? c : 0) * font->bytesperglyph;
+            uint32_t idx = (((unsigned char) c) < font->numglyph ? c : 0) * font->bytesperglyph;
+            unsigned char* glyph = (unsigned char*) &font->glyphs + idx;
 
             uint8_t w, h;
 
@@ -352,7 +352,7 @@ void putc(uint32_t charX, uint32_t charY, char c, unsigned int textColor, unsign
             // print the character pixel by pixel
             for (w = 0; w < font->width; ++w) {
                 for (h = 0; h < font->height; ++h) {
-                    mask = 1 << (w);
+                    mask = (1 << w);
                     if (glyph[h] & mask) {
                         write_pixel(charX * font->width + (font->width - w), charY * font->height + h, textColor);
                     } else {
@@ -386,7 +386,7 @@ void putc(char c, unsigned int color, unsigned int rev) {
 
 // allows printing whole strings to the console
 void puts(uint32_t charX, uint32_t charY, const char* str, unsigned int color, unsigned int rev) {
-    for (int i = 0; str[i] != '\0'; ++i) {
+    for (uint32_t i = 0; str[i] != '\0'; ++i) {
         putc(charX + i, charY, str[i], color, rev);
     }
 }
@@ -431,6 +431,8 @@ static const char flag_chars[] = "#0- +";
 #define FLAG_NEGATIVE           (1<<7)
 #define FLAG_ALT2               (1<<8)
 
+#define NUMBUFSIZ 24
+
 // limited format string printing to the console! (borrowed from WeensyOS)
 void printf(const char* format, ...) {
     va_list val;
@@ -438,7 +440,6 @@ void printf(const char* format, ...) {
 
     unsigned int color = WHITE;
 
-#define NUMBUFSIZ 24
     char numbuf[NUMBUFSIZ];
 
     for (; *format; ++format) {

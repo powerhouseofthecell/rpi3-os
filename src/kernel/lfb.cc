@@ -1,6 +1,6 @@
 #include "kernel/lfb.hh"
 
-// the global font to use for this system
+// the global font header to use for this system
 psf_t* font = (psf_t*)&_binary_font_psf_start;
 
 framebufferInfo fbInfo;

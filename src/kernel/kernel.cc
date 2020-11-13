@@ -15,6 +15,9 @@
 extern volatile unsigned char _data;
 extern volatile unsigned char _end;
 
+// a pointer to the first kernel pagetable
+pagetable* kernel_pagetable = (pagetable*) &_end;
+
 // Memory state
 //    Information about physical page with address `pa` is stored in
 //    `pages[pa / PAGESIZE]`. In the handout code, each `pages` entry
@@ -23,17 +26,23 @@ extern volatile unsigned char _end;
 
 pageinfo pages[NPAGES];
 
+// handle interrupts
 extern "C" void irq_handler() {
-    // increment our "clock's" ticks, up to 999999
-    ticks = (ticks + 1) % 1000000;
+    // increment our "clock's" ticks
+    // reset after (hr * 60 min/hr * 60 sec/min * HZ irq/sec) irqs
+    ticks = (ticks + 1) % (1 * 60 * 60 * HZ);
 
     // reset the timer
     // TODO: #define the magic numbers here
-    uint32_t* local_timer = (uint32_t*) 0x40000038;
-    *local_timer = (uint32_t) (LOCAL_TIMER_RELOAD | (1<<30));
+    *((uint32_t*) 0x40000038) = (uint32_t) (LOCAL_TIMER_RELOAD | (1<<30));
 
-    puts(fbInfo.width / font->width - 13, 0, "Tick: ", BLACK, WHITE);
-    puts(fbInfo.width / font->width - 7, 0, itoa(ticks, 10), BLACK, WHITE);
+    // // restore the cursor position after this printing
+    // uint32_t old_x = char_xpos;
+    // uint32_t old_y = char_ypos;
+    // puts(fbInfo.width / font->width - 12, 0, "Tick: ", BLACK, WHITE);
+    // puts(fbInfo.width / font->width - 6, 0, itoa(ticks, 10), BLACK, WHITE);
+    // char_xpos = old_x;
+    // char_ypos = old_y;
 }
 
 // the main initialization function for our kernel
@@ -50,13 +59,13 @@ extern "C" void kernel_main() {
     // initialize interrupts (timer)
     init_interrupts();
 
-    printf("lfb: %p\n", fbInfo.addr);
-    printf("Current Level: %i\n", getCurrentEL());
-    printf("_end: %p, _data: %p\n", &_end, &_data);
+    // printf("lfb: %p\n", fbInfo.addr);
+    // printf("Current Level: %i\n", getCurrentEL());
+    // printf("_end: %p, _data: %p\n", &_end, &_data);
 
     // loop forever
     while (true) {
-        uart_puts("Hello\n");
+        puts("hi");
     };
 }
 

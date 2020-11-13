@@ -2,7 +2,7 @@
 #include "common/stdlib.hh"
 
 /**
- * common exception handler
+ * exception handler for exceptions that we haven't handled yet ;)
  */
 extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long elr, unsigned long spsr, unsigned long far) {
     // print out interruption type
