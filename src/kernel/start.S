@@ -7,17 +7,12 @@ _start:
     // read cpu id
     mrs     x1, mpidr_el1
     and     x1, x1, #0xFF
-    cbz     x1, 2f
+    cbz     x1, _setup
 
-    // cpu id > 0, disable interrupts, stop that cpu
-    bl      _disable_interrupts
+    // cpu id > 0, stop that cpu
     b       halt
 
-2:  // cpu id == 0
-    // set stack before our code
-    ldr     x1, =_start
-    mov     sp, x1
-
+_setup:
     // get the current exception level
     mrs     x0, CurrentEL
     and     x0, x0, #12 // clear reserved bits
@@ -26,7 +21,9 @@ _start:
     cmp     x0, #12
     bne     5f
 
-    // should never be executed, just for completeness
+    b halt
+
+    // should never be executed, just in case
     mov     x2, #0x5b1
     msr     scr_el3, x2
     mov     x2, #0x3c9
@@ -36,50 +33,52 @@ _start:
     eret
 
     // running at EL2?
-5:  cmp     x0, #4
+5:  
+    cmp     x0, #4
     beq     5f
     msr     sp_el1, x1
 
-    // enable CNTP for EL1
-    mrs     x0, cnthctl_el2
-    orr     x0, x0, #3
-    msr     cnthctl_el2, x0
-    msr     cntvoff_el2, xzr
-
-    // enable AArch64 in EL1
-    mov     x0, #(1 << 31)      // AArch64
-    orr     x0, x0, #(1 << 1)   // SWIO hardwired on Pi3
-    msr     hcr_el2, x0
-    mrs     x0, hcr_el2
-
-    // Setup SCTLR access
+    // SCTLR - no mmu
     mov     x2, #0x0800
     movk    x2, #0x30d0, lsl #16
     msr     sctlr_el1, x2
+
+    // HCR - AArch64 in EL1
+    mov     x0, #(1 << 31)
+    msr     hcr_el2, x0
+
+    // change execution level to EL1
+    mov     x2, #0x3c5
+    msr     spsr_el2, x2
+
+    // "return address" for our eret
+    adr     x2, 5f
+    msr     elr_el2, x2
 
     // setup exception handler
     ldr     x2, =_vectors
     msr     vbar_el1, x2
 
-    // change execution level to EL1
-    mov     x2, #0x3c4
-    msr     spsr_el2, x2
-    adr     x2, 5f
-    msr     elr_el2, x2
     eret
 
-5:  mov     sp, x1
-
+5:  
     // clear bss
     ldr     x1, =__bss_start
     ldr     w2, =__bss_size
-3:  cbz     w2, 4f
+
+3:  
+    cbz     w2, 4f
     str     xzr, [x1], #8
     sub     w2, w2, #1
     cbnz    w2, 3b
 
-    // jump to CPP code, should not return
-4:  bl      kernel_main
+4:  
+    // set stack before our code
+    ldr     x1, =_start
+    mov     sp, x1
+
+    // jump to the kernel (shouldn't return)
+    bl      kernel_main
     b       halt
 
 // puts this cpu into low power mode
@@ -178,7 +177,7 @@ _vectors:
     ventry unhandled_exception_3
 
     ventry unhandled_exception_4
-    ventry unhandled_exception_5
+    ventry irq_wrapper
     ventry unhandled_exception_6
     ventry unhandled_exception_7
 

@@ -36,13 +36,13 @@ extern "C" void irq_handler() {
     // TODO: #define the magic numbers here
     *((uint32_t*) 0x40000038) = (uint32_t) (LOCAL_TIMER_RELOAD | (1<<30));
 
-    // // restore the cursor position after this printing
-    // uint32_t old_x = char_xpos;
-    // uint32_t old_y = char_ypos;
-    // puts(fbInfo.width / font->width - 12, 0, "Tick: ", BLACK, WHITE);
-    // puts(fbInfo.width / font->width - 6, 0, itoa(ticks, 10), BLACK, WHITE);
-    // char_xpos = old_x;
-    // char_ypos = old_y;
+    // restore the cursor position after this printing
+    uint32_t old_x = char_xpos;
+    uint32_t old_y = char_ypos;
+    puts(fbInfo.width / font->width - 12, 0, "Tick: ", BLACK, WHITE);
+    puts(fbInfo.width / font->width - 6, 0, itoa(ticks, 10), BLACK, WHITE);
+    char_xpos = old_x;
+    char_ypos = old_y;
 }
 
 // the main initialization function for our kernel
@@ -59,13 +59,13 @@ extern "C" void kernel_main() {
     // initialize interrupts (timer)
     init_interrupts();
 
-    // printf("lfb: %p\n", fbInfo.addr);
-    // printf("Current Level: %i\n", getCurrentEL());
-    // printf("_end: %p, _data: %p\n", &_end, &_data);
+    printf("lfb: %p\n", fbInfo.addr);
+    printf("Current Level: %i\n", getCurrentEL());
+    printf("_end: %p, _data: %p\n", &_end, &_data);
 
     // loop forever
     while (true) {
-        puts("hi");
+        //puts("hi");
     };
 }
 
