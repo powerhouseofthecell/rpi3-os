@@ -9,24 +9,16 @@
 #include "common/types.hh"
 #include "common/stdlib.hh"
 
-#define KERNEL_UART0_DR        ((volatile unsigned int*)0xFFFFFFFFFFE00000)
-#define KERNEL_UART0_FR        ((volatile unsigned int*)0xFFFFFFFFFFE00018)
-
 extern volatile unsigned char _data;
 extern volatile unsigned char _end;
 
 // a pointer to the first kernel pagetable
 pagetable* kernel_pagetable = (pagetable*) &_end;
 
-// Memory state
-//    Information about physical page with address `pa` is stored in
-//    `pages[pa / PAGESIZE]`. In the handout code, each `pages` entry
-//    holds an `refcount` member, which is 0 for free pages.
-//    You can change this as you see fit.
-
+// in-memory metadata on memory (that's meta hehe)
 pageinfo pages[NPAGES];
 
-// handle interrupts
+// handle timer interrupts
 extern "C" void irq_handler() {
     // increment our "clock's" ticks
     // reset after (hr * 60 min/hr * 60 sec/min * HZ irq/sec) irqs
@@ -64,9 +56,7 @@ extern "C" void kernel_main() {
     printf("_end: %p, _data: %p\n", &_end, &_data);
 
     // loop forever
-    while (true) {
-        //puts("hi");
-    };
+    while (true);
 }
 
 // prints a dissected physical address (dissected by pagetable entry index bits)

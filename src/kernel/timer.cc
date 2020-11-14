@@ -3,8 +3,7 @@
 
 uint64_t ticks = 0;
 
-extern "C" void _enable_interrupts();
-extern "C" void _disable_interrupts();
+extern "C" void enable_interrupts();
 
 // enables timer interrupts
 void init_interrupts() {
@@ -18,5 +17,5 @@ void init_interrupts() {
     *local_timer = reloadVal | LOCAL_TIMER_ENABLE | LOCAL_TIMER_IRQ_ENABLE;
     
     // enables interrupts at the system level
-    _enable_interrupts();
+    enable_interrupts();
 }

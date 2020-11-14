@@ -7,19 +7,19 @@ _start:
     // read cpu id
     mrs     x1, mpidr_el1
     and     x1, x1, #0xFF
-    cbz     x1, _setup
+    cbz     x1, _setup_begin
 
     // cpu id > 0, stop that cpu
     b       halt
 
-_setup:
+_setup_begin:
     // get the current exception level
     mrs     x0, CurrentEL
     and     x0, x0, #12 // clear reserved bits
 
     // check that we're running at EL1
     cmp     x0, #12
-    bne     5f
+    bne     _setup_sys_regs
 
     b halt
 
@@ -28,51 +28,41 @@ _setup:
     msr     scr_el3, x2
     mov     x2, #0x3c9
     msr     spsr_el3, x2
-    adr     x2, 5f
+    adr     x2, _setup_sys_regs
     msr     elr_el3, x2
     eret
 
-    // running at EL2?
-5:  
-    cmp     x0, #4
-    beq     5f
-    msr     sp_el1, x1
-
-    // SCTLR - no mmu
-    mov     x2, #0x0800
-    movk    x2, #0x30d0, lsl #16
+// setup important system registers: SCTLR, HCR, SPSR, VBAR
+_setup_sys_regs:
+    // SCTLR
+    ldr     x2, =SCTLR_EL1_VAL
     msr     sctlr_el1, x2
 
     // HCR - AArch64 in EL1
-    mov     x0, #(1 << 31)
+    ldr     x0, =HCR_EL2_VAL
     msr     hcr_el2, x0
 
-    // change execution level to EL1
-    mov     x2, #0x3c5
+    // SPSR - change execution level to EL1
+    ldr     x2, =SPSR_EL2_VAL
     msr     spsr_el2, x2
 
-    // "return address" for our eret
-    adr     x2, 5f
-    msr     elr_el2, x2
-
-    // setup exception handler
+    // VBAR - exception handlers
     ldr     x2, =_vectors
     msr     vbar_el1, x2
 
+    // "return address" for our eret (drops exception level)
+    adr     x2, _setup_end
+    msr     elr_el2, x2
+
     eret
 
-5:  
+// finish setup and jump to the kernel
+_setup_end:  
     // clear bss
-    ldr     x1, =__bss_start
-    ldr     w2, =__bss_size
+    ldr     x0, =__bss_start
+    ldr     x1, =__bss_size
+    bl      memzero
 
-3:  
-    cbz     w2, 4f
-    str     xzr, [x1], #8
-    sub     w2, w2, #1
-    cbnz    w2, 3b
-
-4:  
     // set stack before our code
     ldr     x1, =_start
     mov     sp, x1
@@ -81,19 +71,29 @@ _setup:
     bl      kernel_main
     b       halt
 
+// zeros sz bytes (x1) of memory starting at addr (x0)
+memzero:
+    cbz     x1, _mz_ret
+    str     xzr, [x0], #8
+    sub     x1, x1, #1
+    cbnz    x1, memzero
+
+_mz_ret:
+    ret
+
 // puts this cpu into low power mode
 halt:
     b halt
 
-.global _enable_interrupts
 // turns on global interrupts
-_enable_interrupts:
+.global enable_interrupts
+enable_interrupts:
     msr daifclr, #2
     ret
 
-.global _disable_interrupts
 // turns off global interrupts
-_disable_interrupts:
+.global disable_interrupts
+disable_interrupts:
     msr daifset, #2
     ret
 
@@ -162,17 +162,11 @@ _disable_interrupts:
     b      \label
 .endm
 
-// a wrapper for handling irqs
-irq_wrapper:
-	kernel_entry
-	bl	irq_handler
-	kernel_exit
-
 // vectors for exception handling
 .balign 0x800
 _vectors:
     ventry unhandled_exception_0
-    ventry irq_wrapper
+    ventry unhandled_exception_1
     ventry unhandled_exception_2
     ventry unhandled_exception_3
 
@@ -190,6 +184,12 @@ _vectors:
     ventry unhandled_exception_13
     ventry unhandled_exception_14
     ventry unhandled_exception_15
+
+// a wrapper for handling irqs
+irq_wrapper:
+	kernel_entry
+	bl	irq_handler
+	kernel_exit
 
 // a block of exception handlers for unimplemented exceptions
 unhandled_exception_0:
