@@ -3,6 +3,7 @@
 #include "kernel/mmu.hh"
 #include "kernel/pagetable.hh"
 #include "kernel/vmiter.hh"
+#include "kernel/kernel.hh"
 
 // granularity
 #define PT_PAGE     0b11        // 4k granule
@@ -26,7 +27,13 @@
 
 // get addresses from linker
 extern volatile unsigned char _data;
-extern volatile unsigned char _end;
+extern volatile unsigned char _kernel_end;
+
+// mark a physical address as used
+void mark_as_used(uint64_t pa) {
+    assert(!pages[pa / PAGESIZE].used());
+    ++pages[pa / PAGESIZE].refcount;
+}
 
 /**
  * Set up page translation tables and enable virtual memory
@@ -36,13 +43,14 @@ void mmu_init()
     unsigned long data_page = (unsigned long) &_data / PAGESIZE;
     unsigned long r, b;
 
-    // all initial pagetables for the kernel live starting at _end
-    pagetable* pagetables = (pagetable*) &_end;
+    // all initial pagetables for the kernel live starting at _kernel_end
+    pagetable* pagetables = (pagetable*) &_kernel_end;
 
     /* setup initial pagetables (identity mapped in user/EL0-addresses) */
     // NOTE: addresses here are physical because MMU has not been switched on yet
 
     // TTBR0, identity L1
+    mark_as_used((uint64_t) &pagetables[0]);
     pagetables[0].entry[0] = (pageentry_t) (&pagetables[2]) |    // physical address
         PTE_PAGE|
         PTE_A   |     // accessed flag. Without this we're going to have a Data Abort exception
@@ -56,6 +64,7 @@ void mmu_init()
         PT_ISH;       // inner shareable
 
     // identity L2, first 2M block : our OS assumes this is all of physical memory
+    mark_as_used((uint64_t) &pagetables[2]);
     pagetables[2].entry[0] = (pageentry_t) (&pagetables[3]) | // physical address
         PTE_PAGE|
         PTE_A   |     // accessed flag
@@ -75,6 +84,7 @@ void mmu_init()
     }
 
     // map other 2M blocks in L2
+    mark_as_used((uint64_t) &pagetables[6]);
     for (r = 0; r < 512; ++r) {
         pagetables[6].entry[r] = (pageentry_t) (((r + 512) << SECTION_SHIFT)) |
             PTE_BLOCK|
@@ -85,6 +95,7 @@ void mmu_init()
     }
 
     // identity L3, skipping 0x0 for debugging
+    mark_as_used((uint64_t) &pagetables[3]);
     pagetables[3].entry[0] = (pageentry_t) 0x0;
     for (r = 1; r < 512; r++) {
         if (r < 0x80 || r >= data_page) {
@@ -108,6 +119,7 @@ void mmu_init()
     }
 
     // TTBR1, kernel L1 @ index 511
+    mark_as_used((uint64_t) &pagetables[1]);
     pagetables[1].entry[511] = (pageentry_t) (&pagetables[4]) | // physical address
         PT_PAGE |     // we have area in it mapped by pages
         PTE_A   |     // accessed flag
@@ -115,6 +127,7 @@ void mmu_init()
         PT_MEM;       // normal memory
 
     // kernel L2 @ index 511
+    mark_as_used((uint64_t) &pagetables[4]);
     pagetables[4].entry[511] = (pageentry_t) (&pagetables[5]) |   // physical address
         PT_PAGE |     // we have area in it mapped by pages
         PTE_A   |     // accessed flag
@@ -122,6 +135,7 @@ void mmu_init()
         PT_MEM;       // normal memory
 
     // kernel L3 @ index 0: map a page of MMIO addresses
+    mark_as_used((uint64_t) &pagetables[5]);
     pagetables[5].entry[0] = (pageentry_t) (MMIO_BASE + 0x00201000) |   // physical address
         PT_PAGE |     // map 4k
         PTE_A   |     // accessed flag

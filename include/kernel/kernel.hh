@@ -4,7 +4,7 @@
 #include "kernel/pagetable.hh"
 
 // Kernel start address
-#define KERNEL_START_ADDR       0x40000
+#define KERNEL_START_ADDR       0x80000
 
 // Top of the kernel stack
 #define KERNEL_STACK_TOP        0x80000
@@ -36,5 +36,7 @@ bool allocatable_physical_address(uintptr_t pa);
 
 // allocates a kernel page, returns nullptr on failure
 void* kalloc_page();
+
+void memshow();
 
 #endif

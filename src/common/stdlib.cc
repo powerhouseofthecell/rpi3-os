@@ -332,7 +332,7 @@ void putc(uint32_t charX, uint32_t charY, char c, unsigned int textColor, unsign
             break;
         
         case '\t':
-            fbInfo.xpos = round_up(fbInfo.xpos, 4);
+            fbInfo.xpos = round_up(fbInfo.xpos, 8);
             break;
 
         default:

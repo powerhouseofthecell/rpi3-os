@@ -52,7 +52,7 @@ typedef struct {
     uint32_t clear_reload;
 } local_timer_t;
 
-extern uint64_t ticks;
+extern volatile uint64_t ticks;
 
 // enables timer interrupts
 void init_interrupts();

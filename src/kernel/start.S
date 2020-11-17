@@ -9,7 +9,7 @@ _start:
     and     x1, x1, #0xFF
     cbz     x1, _setup_begin
 
-    // cpu id > 0, stop that cpu
+    // cpu id > 0, stop
     b       halt
 
 _setup_begin:
@@ -67,6 +67,8 @@ _setup_end:
 
     // jump to the kernel (shouldn't return)
     bl      kernel_main
+
+    // halt this core in case kernel_main returns
     b       halt
 
 // zeros sz bytes (x1) of memory starting at addr (x0)

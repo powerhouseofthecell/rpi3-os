@@ -1,7 +1,7 @@
 #include "kernel/timer.hh"
 #include "common/stdlib.hh"
 
-uint64_t ticks = 0;
+volatile uint64_t ticks = 0;
 
 extern "C" void enable_interrupts();
 

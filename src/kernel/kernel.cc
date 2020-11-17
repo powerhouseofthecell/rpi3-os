@@ -9,11 +9,11 @@
 #include "common/types.hh"
 #include "common/stdlib.hh"
 
-extern volatile unsigned char _data;
-extern volatile unsigned char _end;
+extern volatile uint64_t _data;
+extern volatile uint64_t _kernel_end;
 
 // a pointer to the first kernel pagetable
-pagetable* kernel_pagetable = (pagetable*) &_end;
+pagetable* kernel_pagetable = (pagetable*) &_kernel_end;
 
 // in-memory metadata on memory (that's meta hehe)
 pageinfo pages[NPAGES];
@@ -53,27 +53,27 @@ extern "C" void kernel_main() {
 
     printf("lfb: %p\n", fbInfo.addr);
     printf("Current Level: %i\n", getCurrentEL());
-    printf("_end: %p, _data: %p\n", &_end, &_data);
+    printf("&_kernel_end: %p, &_data: %p\n", &_kernel_end, &_data);
 
     // loop forever
-    while (true) {}
+    while (true) {
+        // every second, refresh the memviewer
+        if (ticks % HZ == 0) {
+            memshow();
+        }
+
+        // every 10 seconds, kalloc a page
+        if ((ticks % (10 * HZ)) == 0) {
+            uint32_t* pa = (uint32_t*) kalloc_page();
+            *pa = 42;
+            assert(*pa == 42);
+        }
+    }
 }
 
-// prints a dissected physical address (dissected by pagetable entry index bits)
-void dissect_vaddr(unsigned long vaddr) {
-    printf("dissecting           : %p\n", vaddr);
-    printf("rg sel: bits [39, 64): 0x%x\n", vaddr >> 39);
-    printf("l1 idx: bits [30, 39): 0x%x\n", pageindex(vaddr, 2));
-    printf("l2 idx: bits [21, 30): 0x%x\n", pageindex(vaddr, 1));
-    printf("l3 idx: bits [12, 21): 0x%x\n", pageindex(vaddr, 0));
-    printf("pa idx: bits [00, 12): 0x%x\n", pageoffset(vaddr, 0));
-}
-
-#define IOPHYSMEM       0x000A0000
-#define EXTPHYSMEM      0x00100000
-
+// return true iff pa is reserved for special uses (MMIO or nullpage)
 bool reserved_physical_address(uintptr_t pa) {
-    return pa < PAGESIZE;// || (pa >= IOPHYSMEM && pa < EXTPHYSMEM);
+    return pa < PAGESIZE || (pa >= MMIO_BASE && pa < MMIO_END);
 }
 
 // allocatable_physical_address(pa)
@@ -83,21 +83,50 @@ bool reserved_physical_address(uintptr_t pa) {
 bool allocatable_physical_address(uintptr_t pa) {
     return !reserved_physical_address(pa)
         && (pa < KERNEL_START_ADDR
-            || pa >= round_up((uintptr_t) &_end, PAGESIZE))
+            || pa >= round_up((uintptr_t) &_kernel_end, PAGESIZE))
         && (pa < KERNEL_STACK_TOP - PAGESIZE
             || pa >= KERNEL_STACK_TOP)
         && pa < MEMSIZE_PHYSICAL;
 }
 
 void* kalloc_page() {
-    uart_puts("Kalloc'd page\n");
-    for (uintptr_t pa = 0; pa != MEMSIZE_PHYSICAL; pa += PAGESIZE) {
+    for (uintptr_t pa = 0; pa < MEMSIZE_PHYSICAL; pa += PAGESIZE) {
         if (allocatable_physical_address(pa)
             && !pages[pa / PAGESIZE].used()) {
             ++pages[pa / PAGESIZE].refcount;
-            memset((void*) pa, 0xCC, PAGESIZE);
+            //memset((void*) pa, 0xCC, PAGESIZE);
             return (void*) pa;
         }
     }
     return nullptr;
+}
+
+// draw a depiction of the state of memory to the screen, starting at halfway down
+void memshow() {
+    uint32_t old_xpos = fbInfo.xpos;
+    uint32_t old_ypos = fbInfo.ypos;
+
+    fbInfo.xpos = 0;
+    fbInfo.ypos = (fbInfo.height / font->height) / 2;
+
+    printf("PHYSICAL MEMORY");
+
+    uint32_t pages_per_row = 32;
+    for (uint64_t pa = 0x00, page = 0; pa < MEMSIZE_PHYSICAL; pa += PAGESIZE, ++page) {
+        // on each new row
+        if (page % pages_per_row == 0) {
+            printf("\n%p\t", pa);
+        }
+
+        puts(" ");
+        if (pages[page].used()) {
+            puts(" ", WHITE, WHITE);
+        } else {
+            puts(".");
+        }
+    }
+
+
+    fbInfo.xpos = old_xpos;
+    fbInfo.ypos = old_ypos;
 }

@@ -2,7 +2,9 @@
 #define GPIO_HH
 #include "kernel/mmu.hh"
 
+// set the addresses for memory-mapped memory
 #define MMIO_BASE       0x3F000000
+#define MMIO_END        0x4FFFFFFF
 
 #define GPFSEL0         ((volatile unsigned int*)(MMIO_BASE+0x00200000))
 #define GPFSEL1         ((volatile unsigned int*)(MMIO_BASE+0x00200004))
