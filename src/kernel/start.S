@@ -21,8 +21,6 @@ _setup_begin:
     cmp     x0, #12
     bne     _setup_sys_regs
 
-    b halt
-
     // should never be executed, just in case
     mov     x2, #0x5b1
     msr     scr_el3, x2
@@ -72,13 +70,12 @@ _setup_end:
     b       halt
 
 // zeros sz bytes (x1) of memory starting at addr (x0)
+// NOTE: goes by 8 byte increments
 memzero:
-    cbz     x1, _mz_ret
     str     xzr, [x0], #8
-    sub     x1, x1, #1
+    sub     x1, x1, #8
     cbnz    x1, memzero
 
-_mz_ret:
     ret
 
 // puts this cpu into low power mode

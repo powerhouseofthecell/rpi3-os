@@ -63,6 +63,9 @@ void lfb_init() {
 
         mbox[28] &= 0x3FFFFFFF;
         fbInfo.addr = (uint64_t)((unsigned long) mbox[28]);
+
+        fbInfo.xpos = 0;
+        fbInfo.ypos = 0;
     } else {
         uart_puts("Unable to set screen resolution to 1024x768x32\n");
     }

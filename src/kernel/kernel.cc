@@ -29,12 +29,12 @@ extern "C" void irq_handler() {
     *((uint32_t*) 0x40000038) = (uint32_t) (LOCAL_TIMER_RELOAD | (1<<30));
 
     // restore the cursor position after this printing
-    uint32_t old_x = char_xpos;
-    uint32_t old_y = char_ypos;
+    uint32_t old_x = fbInfo.xpos;
+    uint32_t old_y = fbInfo.ypos;
     puts(fbInfo.width / font->width - 12, 0, "Tick: ", BLACK, WHITE);
     puts(fbInfo.width / font->width - 6, 0, itoa(ticks, 10), BLACK, WHITE);
-    char_xpos = old_x;
-    char_ypos = old_y;
+    fbInfo.xpos = old_x;
+    fbInfo.ypos = old_y;
 }
 
 // the main initialization function for our kernel
@@ -56,7 +56,7 @@ extern "C" void kernel_main() {
     printf("_end: %p, _data: %p\n", &_end, &_data);
 
     // loop forever
-    while (true);
+    while (true) {}
 }
 
 // prints a dissected physical address (dissected by pagetable entry index bits)

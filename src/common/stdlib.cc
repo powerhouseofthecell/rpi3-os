@@ -302,10 +302,6 @@ void write_pixel(uint32_t x, uint32_t y, uint32_t pixel) {
 }
 
 // BEGIN: console functions
-// positions of the next characters to print
-uint32_t char_xpos = 0;
-uint32_t char_ypos = 0;
-
 // clear the console by setting all pixels to reverse_video
 void clear_console() {
     for (int y = 0; y < fbInfo.height; ++y) {
@@ -314,8 +310,8 @@ void clear_console() {
         }
     }
 
-    char_xpos = 0;
-    char_ypos = 0;
+    fbInfo.xpos = 0;
+    fbInfo.ypos = 0;
 }
 
 // put a single character (c) to the console at character position (charX, charY)
@@ -327,16 +323,16 @@ void putc(uint32_t charX, uint32_t charY, char c, unsigned int textColor, unsign
 
     switch (c) {
         case '\n':
-            char_xpos = 0;
-            ++char_ypos;
+            fbInfo.xpos = 0;
+            ++fbInfo.ypos;
             break;
 
         case '\r':
-            char_xpos = 0;
+            fbInfo.xpos = 0;
             break;
         
         case '\t':
-            char_xpos = round_up(char_xpos, 4);
+            fbInfo.xpos = round_up(fbInfo.xpos, 4);
             break;
 
         default:
@@ -361,27 +357,27 @@ void putc(uint32_t charX, uint32_t charY, char c, unsigned int textColor, unsign
                 }
             }
 
-            char_xpos = charX + 1;
-            char_ypos = charY;
+            fbInfo.xpos = charX + 1;
+            fbInfo.ypos = charY;
     }
     
-    if (char_xpos >= fbInfo.width / font->width) {
-        ++char_ypos;
-        char_xpos = 0;
+    if (fbInfo.xpos >= fbInfo.width / font->width) {
+        ++fbInfo.ypos;
+        fbInfo.xpos = 0;
     }
 
-    if (char_ypos >= fbInfo.height / font->height) {
-        char_ypos = 0;
+    if (fbInfo.ypos >= fbInfo.height / font->height) {
+        fbInfo.ypos = 0;
     }
 }
 void putc(char c) {
-    putc(char_xpos, char_ypos, c, WHITE, BLACK);
+    putc(fbInfo.xpos, fbInfo.ypos, c, WHITE, BLACK);
 }
 void putc(char c, unsigned int color) {
-    putc(char_xpos, char_ypos, c, color, BLACK);
+    putc(fbInfo.xpos, fbInfo.ypos, c, color, BLACK);
 }
 void putc(char c, unsigned int color, unsigned int rev) {
-    putc(char_xpos, char_ypos, c, color, rev);
+    putc(fbInfo.xpos, fbInfo.ypos, c, color, rev);
 }
 
 // allows printing whole strings to the console
@@ -391,13 +387,13 @@ void puts(uint32_t charX, uint32_t charY, const char* str, unsigned int color, u
     }
 }
 void puts(const char* str) {
-    puts(char_xpos, char_ypos, str, WHITE, BLACK);
+    puts(fbInfo.xpos, fbInfo.ypos, str, WHITE, BLACK);
 }
 void puts(const char* str, unsigned int color) {
-    puts(char_xpos, char_ypos, str, color, BLACK);
+    puts(fbInfo.xpos, fbInfo.ypos, str, color, BLACK);
 }
 void puts(const char* str, unsigned int color, unsigned int rev) {
-    puts(char_xpos, char_ypos, str, color, rev);
+    puts(fbInfo.xpos, fbInfo.ypos, str, color, rev);
 }
 
 // this is also borrowed from WeensyOS

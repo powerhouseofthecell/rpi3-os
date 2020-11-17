@@ -4,8 +4,6 @@
 #include "kernel/pagetable.hh"
 #include "kernel/vmiter.hh"
 
-#define PAGESIZE    4096
-
 // granularity
 #define PT_PAGE     0b11        // 4k granule
 #define PT_BLOCK    0b01        // 2M granule

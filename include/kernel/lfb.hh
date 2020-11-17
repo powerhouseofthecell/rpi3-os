@@ -36,6 +36,9 @@ struct framebufferInfo {
     // how many bits per pixel
     int depth;
     int pitch;
+
+    uint32_t xpos;
+    uint32_t ypos;
 };
 extern framebufferInfo fbInfo;
 
