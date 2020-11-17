@@ -3,7 +3,13 @@ CC=$(TOOLCHAIN_PREFIX)-gcc
 
 SRCS = $(wildcard *.cc)
 OBJS = $(SRCS:.cc=.o)
-CFLAGS = -Wall -Wextra -O2 -ffreestanding -nostdinc -nostdlib -nostartfiles -g -ggdb
+CFLAGS = -O2 -std=gnu++1z -ffreestanding -nostdinc -nostdlib -nostartfiles -g -ggdb \
+	-Wall -W -Wshadow -Wno-format -Wno-unused-parameter -Wextra
+	# -fno-omit-frame-pointer -fno-pic \
+	# -fno-stack-protector \
+	# -Wstack-usage=1024
+
+LINKERFLAGS = -Os --gc-sections -z max-page-size=0x1000 -static -nostdlib -nostartfiles
 
 KERNEL_NAME=kernel8
 
@@ -23,8 +29,8 @@ OBJECTS += font_psf.o
 HEADERS = $(wildcard $(KER_HEAD)/*.h) $(wildcard $(KER_HEAD)/*.hh)
 
 build: $(OBJECTS) $(HEADERS)
-	$(TOOLCHAIN_PREFIX)-ld -nostdlib -nostartfiles $(OBJECTS) -T linker.ld -o $(KERNEL_NAME).elf
-	$(TOOLCHAIN_PREFIX)-objcopy -O binary $(KERNEL_NAME).elf $(KERNEL_NAME).img
+	$(TOOLCHAIN_PREFIX)-ld $(LINKERFLAGS) $(OBJECTS) -T linker.ld -o $(KERNEL_NAME).elf
+	$(TOOLCHAIN_PREFIX)-objcopy -j .text -j .rodata -j .data -j .bss -j .ctors -j .init_array -O binary $(KERNEL_NAME).elf $(KERNEL_NAME).img
 
 $(OBJ_DIR)/%.o: $(KER_SRC)/%.cc
 	mkdir -p $(@D)

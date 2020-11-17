@@ -18,6 +18,16 @@ pagetable* kernel_pagetable = (pagetable*) &_kernel_end;
 // in-memory metadata on memory (that's meta hehe)
 pageinfo pages[NPAGES];
 
+void constructors_init() {
+    typedef void (*constructor_function)();
+    extern constructor_function __init_array_start[];
+    extern constructor_function __init_array_end[];
+    for (auto fp = __init_array_start; fp != __init_array_end; ++fp) {
+        printf("%p\n", fp);
+        (*fp)();
+    }
+}
+
 // handle timer interrupts
 extern "C" void irq_handler() {
     // increment our "clock's" ticks
@@ -35,10 +45,25 @@ extern "C" void irq_handler() {
     puts(fbInfo.width / font->width - 6, 0, itoa(ticks, 10), BLACK, WHITE);
     fbInfo.xpos = old_x;
     fbInfo.ypos = old_y;
+
+    // every second, refresh the memviewer
+    if (ticks % HZ == 0) {
+        memshow();
+    }
+
+    // every 2 seconds, kalloc a page
+    if ((ticks % (2 * HZ)) == 0) {
+        uint32_t* pa = (uint32_t*) kalloc_page();
+        *pa = 42;
+        assert(*pa == 42);
+    }
 }
 
 // the main initialization function for our kernel
 extern "C" void kernel_main() {
+    // initialize the cpp constructors
+    constructors_init();
+
     // set up serial console
     uart_init();
 
@@ -54,20 +79,11 @@ extern "C" void kernel_main() {
     printf("lfb: %p\n", fbInfo.addr);
     printf("Current Level: %i\n", getCurrentEL());
     printf("&_kernel_end: %p, &_data: %p\n", &_kernel_end, &_data);
+    printf("pages[1].refcount? %i\n", pages[1].refcount);
+    memshow();
 
     // loop forever
     while (true) {
-        // every second, refresh the memviewer
-        if (ticks % HZ == 0) {
-            memshow();
-        }
-
-        // every 10 seconds, kalloc a page
-        if ((ticks % (10 * HZ)) == 0) {
-            uint32_t* pa = (uint32_t*) kalloc_page();
-            *pa = 42;
-            assert(*pa == 42);
-        }
     }
 }
 
@@ -112,20 +128,19 @@ void memshow() {
     printf("PHYSICAL MEMORY");
 
     uint32_t pages_per_row = 32;
-    for (uint64_t pa = 0x00, page = 0; pa < MEMSIZE_PHYSICAL; pa += PAGESIZE, ++page) {
+    for (uint64_t pa = 0x00, page_num = 0; pa < MEMSIZE_PHYSICAL; pa += PAGESIZE, ++page_num) {
         // on each new row
-        if (page % pages_per_row == 0) {
+        if (page_num % pages_per_row == 0) {
             printf("\n%p\t", pa);
         }
 
         puts(" ");
-        if (pages[page].used()) {
+        if (pages[page_num].used()) {
             puts(" ", WHITE, WHITE);
         } else {
             puts(".");
         }
     }
-
 
     fbInfo.xpos = old_xpos;
     fbInfo.ypos = old_ypos;
