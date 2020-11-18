@@ -44,8 +44,4 @@ extern framebufferInfo fbInfo;
 
 void lfb_init();
 
-void lfb_print(int x, int y, const char *s);
-
-void lfb_putc(int x, int y, char c, int color, int rev_color);
-
 #endif

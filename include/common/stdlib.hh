@@ -73,12 +73,16 @@ inline constexpr T round_up(T x, unsigned multiple) {
     return round_down(x + multiple - 1, multiple);
 }
 
-// console stuff
+// console color stuff
 static const unsigned int WHITE = 0xffffff;
 static const unsigned int BLACK = 0x000000;
 static const unsigned int BLUE =  0xff0000;
 static const unsigned int RED =   0x0000ff;
 static const unsigned int GREEN = 0x00ff00;
+
+// console special characters
+#define CONSOLE_SQUARE          128
+#define CONSOLE_SQUARE_OUTLINE  129
 
 // position of the console cursor
 extern uint32_t char_xpos;

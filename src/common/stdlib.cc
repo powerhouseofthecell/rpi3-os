@@ -314,6 +314,17 @@ void clear_console() {
     fbInfo.ypos = 0;
 }
 
+// returns true iff w, h is within a solid square
+bool console_fx_square(uint8_t w, uint8_t h) {
+    return (w >= 1 && w < 8) && (h >= 4 && h < 11);
+}
+
+// returns true iff w, h is on a square outline
+bool console_fx_square_outline(uint8_t w, uint8_t h) {
+    return (w == 1 || w == 7 || h == 4 || h == 10) 
+        && console_fx_square(w, h);
+}
+
 // put a single character (c) to the console at character position (charX, charY)
 void putc(uint32_t charX, uint32_t charY, char c, unsigned int textColor, unsigned int reverseColor) {
     // don't attempt to print beyond the console
@@ -333,6 +344,40 @@ void putc(uint32_t charX, uint32_t charY, char c, unsigned int textColor, unsign
         
         case '\t':
             fbInfo.xpos = round_up(fbInfo.xpos, 8);
+            break;
+        
+        // prints a square
+        case CONSOLE_SQUARE:
+            for (uint8_t w = 0; w < font->width; ++w) {
+                for (uint8_t h = 0; h < font->height; ++h) {
+                    if (console_fx_square(w, h)) {
+                        write_pixel(charX * font->width + (font->width - w), charY * font->height + h, textColor);
+                    } else {
+                        write_pixel(charX * font->width + (font->width - w), charY * font->height + h, reverseColor);
+                    }
+                }
+            }
+
+            fbInfo.xpos = charX + 1;
+            fbInfo.ypos = charY;
+
+            break;
+        
+        // prints a square outline
+        case CONSOLE_SQUARE_OUTLINE:
+            for (uint8_t w = 0; w < font->width; ++w) {
+                for (uint8_t h = 0; h < font->height; ++h) {
+                    if (console_fx_square_outline(w, h)) {
+                        write_pixel(charX * font->width + (font->width - w), charY * font->height + h, textColor);
+                    } else {
+                        write_pixel(charX * font->width + (font->width - w), charY * font->height + h, reverseColor);
+                    }
+                }
+            }
+
+            fbInfo.xpos = charX + 1;
+            fbInfo.ypos = charY;
+
             break;
 
         default:

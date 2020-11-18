@@ -18,6 +18,7 @@ pagetable* kernel_pagetable = (pagetable*) &_kernel_end;
 // in-memory metadata on memory (that's meta hehe)
 pageinfo pages[NPAGES];
 
+// call and initialize cpp constructors
 void constructors_init() {
     typedef void (*constructor_function)();
     extern constructor_function __init_array_start[];
@@ -51,11 +52,13 @@ extern "C" void irq_handler() {
         memshow();
     }
 
-    // every 2 seconds, kalloc a page
-    if ((ticks % (2 * HZ)) == 0) {
+    // kalloc a page
+    if ((ticks % (HZ)) == 0) {
         uint32_t* pa = (uint32_t*) kalloc_page();
-        *pa = 42;
-        assert(*pa == 42);
+        if (pa) {
+            *pa = 42;
+            assert(*pa == 42);
+        }
     }
 }
 
@@ -80,7 +83,16 @@ extern "C" void kernel_main() {
     printf("Current Level: %i\n", getCurrentEL());
     printf("&_kernel_end: %p, &_data: %p\n", &_kernel_end, &_data);
     printf("pages[1].refcount? %i\n", pages[1].refcount);
-    memshow();
+    printf("w: %i, h: %i\n", font->width, font->height);
+
+    putc(CONSOLE_SQUARE);
+    putc(CONSOLE_SQUARE);
+    putc(CONSOLE_SQUARE);
+    putc('\n');
+    putc(CONSOLE_SQUARE_OUTLINE);
+    putc(CONSOLE_SQUARE_OUTLINE);
+    putc(CONSOLE_SQUARE_OUTLINE);
+    putc('\n');
 
     // loop forever
     while (true) {
@@ -105,16 +117,31 @@ bool allocatable_physical_address(uintptr_t pa) {
         && pa < MEMSIZE_PHYSICAL;
 }
 
+// allocate a page of memory in the kernel
 void* kalloc_page() {
     for (uintptr_t pa = 0; pa < MEMSIZE_PHYSICAL; pa += PAGESIZE) {
         if (allocatable_physical_address(pa)
             && !pages[pa / PAGESIZE].used()) {
             ++pages[pa / PAGESIZE].refcount;
-            //memset((void*) pa, 0xCC, PAGESIZE);
+            memset((void*) pa, 0xAA, PAGESIZE);
             return (void*) pa;
         }
     }
     return nullptr;
+}
+
+// free a provided page of memory in the kernel
+void kfree_page(void* pa) {
+    // do nothing for nullptr or non-page addresses
+    if (pa == nullptr || ((uint64_t) pa) % PAGESIZE != 0) {
+        return;
+    }
+
+    if (allocatable_physical_address((uintptr_t) pa)
+        && pages[(uint64_t)pa / PAGESIZE].used()
+    ) {
+        --pages[(uint64_t)pa / PAGESIZE].refcount;
+    }
 }
 
 // draw a depiction of the state of memory to the screen, starting at halfway down
@@ -136,9 +163,9 @@ void memshow() {
 
         puts(" ");
         if (pages[page_num].used()) {
-            puts(" ", WHITE, WHITE);
+            putc(CONSOLE_SQUARE, WHITE, BLACK);
         } else {
-            puts(".");
+            putc(CONSOLE_SQUARE_OUTLINE, WHITE, BLACK);
         }
     }
 

@@ -37,6 +37,9 @@ bool allocatable_physical_address(uintptr_t pa);
 // allocates a kernel page, returns nullptr on failure
 void* kalloc_page();
 
+// frees a kernel page, does nothing on failure (the best exception handling, i know)
+void kfree_page(void* pa);
+
 void memshow();
 
 #endif
