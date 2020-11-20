@@ -1,6 +1,10 @@
+/* entrypoint is the _start defined in kernel/start.S */
+ENTRY(_start);
+
 SECTIONS
 {
     . = 0x80000;
+    PROVIDE(__kernel_stack_top = .);
 
     .text : {
         KEEP(*(.text.boot))

@@ -24,6 +24,9 @@
 struct pageinfo {
     uint8_t refcount;
 
+    // the owning pid, 0 == kernel, -1 == shared
+    uint16_t owner;
+
     bool used() const {
         return this->refcount != 0;
     }

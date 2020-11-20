@@ -80,6 +80,8 @@ static const unsigned int BLUE =  0xff0000;
 static const unsigned int RED =   0x0000ff;
 static const unsigned int GREEN = 0x00ff00;
 
+static const unsigned int COLORS[4] = {WHITE, BLUE, RED, GREEN};
+
 // console special characters
 #define CONSOLE_SQUARE          128
 #define CONSOLE_SQUARE_OUTLINE  129

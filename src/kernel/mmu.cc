@@ -28,15 +28,17 @@
 // get addresses from linker
 extern volatile unsigned char _data;
 extern volatile unsigned char _kernel_end;
+extern volatile unsigned char __kernel_stack_top;
 
-// mark a physical address as used
+// mark a physical address as used by the kernel
 void mark_as_used(uint64_t pa) {
     assert(!pages[pa / PAGESIZE].used());
     ++pages[pa / PAGESIZE].refcount;
+    pages[pa / PAGESIZE].owner = 0;
 }
 
 /**
- * Set up page translation tables and enable virtual memory
+ * Set up pagetables and enable virtual memory
  */
 void mmu_init()
 {
@@ -48,6 +50,15 @@ void mmu_init()
 
     /* setup initial pagetables (identity mapped in user/EL0-addresses) */
     // NOTE: addresses here are physical because MMU has not been switched on yet
+    
+    // mark the stack page as used
+    uint64_t stack_page = ((uint64_t) &__kernel_stack_top) - PAGESIZE;
+    mark_as_used(stack_page);
+
+    // mark the kernel text & data as used
+    for (uint64_t pa = (uint64_t) &__kernel_stack_top; pa < (uint64_t) &_kernel_end; pa += PAGESIZE) {
+        mark_as_used(pa);
+    }
 
     // TTBR0, identity L1
     mark_as_used((uint64_t) &pagetables[0]);

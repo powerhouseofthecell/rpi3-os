@@ -47,19 +47,8 @@ extern "C" void irq_handler() {
     fbInfo.xpos = old_x;
     fbInfo.ypos = old_y;
 
-    // every second, refresh the memviewer
-    if (ticks % HZ == 0) {
-        memshow();
-    }
-
-    // kalloc a page
-    if ((ticks % (HZ)) == 0) {
-        uint32_t* pa = (uint32_t*) kalloc_page();
-        if (pa) {
-            *pa = 42;
-            assert(*pa == 42);
-        }
-    }
+    // every tick, refresh the memviewer
+    memshow();
 }
 
 // the main initialization function for our kernel
@@ -85,17 +74,9 @@ extern "C" void kernel_main() {
     printf("pages[1].refcount? %i\n", pages[1].refcount);
     printf("w: %i, h: %i\n", font->width, font->height);
 
-    putc(CONSOLE_SQUARE);
-    putc(CONSOLE_SQUARE);
-    putc(CONSOLE_SQUARE);
-    putc('\n');
-    putc(CONSOLE_SQUARE_OUTLINE);
-    putc(CONSOLE_SQUARE_OUTLINE);
-    putc(CONSOLE_SQUARE_OUTLINE);
-    putc('\n');
-
     // loop forever
     while (true) {
+
     }
 }
 
@@ -150,20 +131,23 @@ void memshow() {
     uint32_t old_ypos = fbInfo.ypos;
 
     fbInfo.xpos = 0;
-    fbInfo.ypos = (fbInfo.height / font->height) / 2;
+    fbInfo.ypos = ((fbInfo.height / font->height) / 2) - 4;
 
     printf("PHYSICAL MEMORY");
 
     uint32_t pages_per_row = 32;
+    int color_idx = 0;
     for (uint64_t pa = 0x00, page_num = 0; pa < MEMSIZE_PHYSICAL; pa += PAGESIZE, ++page_num) {
         // on each new row
         if (page_num % pages_per_row == 0) {
             printf("\n%p\t", pa);
         }
 
+        color_idx = pages[page_num].owner;
+
         puts(" ");
         if (pages[page_num].used()) {
-            putc(CONSOLE_SQUARE, WHITE, BLACK);
+            putc(CONSOLE_SQUARE, COLORS[color_idx], BLACK);
         } else {
             putc(CONSOLE_SQUARE_OUTLINE, WHITE, BLACK);
         }
