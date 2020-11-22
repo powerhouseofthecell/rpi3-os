@@ -5,9 +5,12 @@
 #include "kernel/vmiter.hh"
 #include "kernel/delays.hh"
 #include "kernel/timer.hh"
+#include "kernel/proc.hh"
 
 #include "common/types.hh"
 #include "common/stdlib.hh"
+
+#include "usr/userland.hh"
 
 extern volatile uint64_t _data;
 extern volatile uint64_t _kernel_end;
@@ -17,6 +20,9 @@ pagetable* kernel_pagetable = (pagetable*) &_kernel_end;
 
 // in-memory metadata on memory (that's meta hehe)
 pageinfo pages[NPAGES];
+
+// the proc table
+proc ptable[NPROC];
 
 // call and initialize cpp constructors
 void constructors_init() {
@@ -30,7 +36,7 @@ void constructors_init() {
 }
 
 // handle timer interrupts
-extern "C" void irq_handler() {
+extern "C" void irq_handler(regstate* regs) {
     // increment our "clock's" ticks
     // reset after (hr * 60 min/hr * 60 sec/min * HZ irq/sec) irqs
     ticks = (ticks + 1) % (1 * 60 * 60 * HZ);
@@ -47,9 +53,13 @@ extern "C" void irq_handler() {
     fbInfo.xpos = old_x;
     fbInfo.ypos = old_y;
 
-    // every tick, refresh the memviewer
-    memshow();
+    // refresh the memviewer
+    if (ticks % 10 == 0) {
+        memshow();
+    }
 }
+
+extern "C" [[noreturn]] void exception_return(proc* p);
 
 // the main initialization function for our kernel
 extern "C" void kernel_main() {
@@ -70,15 +80,28 @@ extern "C" void kernel_main() {
 
     printf("lfb: %p\n", fbInfo.addr);
     printf("Current Level: %i\n", getCurrentEL());
-    printf("&_kernel_end: %p, &_data: %p\n", &_kernel_end, &_data);
-    printf("pages[1].refcount? %i\n", pages[1].refcount);
-    printf("w: %i, h: %i\n", font->width, font->height);
 
-    // loop forever
-    while (true) {
+    // setup the initial userland process
+    proc test_proc;
+    test_proc.regs.reg_x0 = 42;
+    test_proc.regs.reg_elr = (uint64_t) &user_main;
+    test_proc.regs.reg_spsr = (1<<6) | (1<<8) | (1<<9);
+    
+    uint64_t stack_base = (uint64_t) kalloc_page();
+    pages[stack_base / PAGESIZE].owner = 1;
+    test_proc.regs.reg_sp = stack_base + PAGESIZE;
 
-    }
-}
+    test_proc.pt = kernel_pagetable;
+    test_proc.pid = 1;
+    test_proc.state = P_RUNNABLE;
+
+    // doesn't return
+    exception_return(&test_proc);
+
+    // shouldn't get here
+    assert(false);
+}    
+
 
 // return true iff pa is reserved for special uses (MMIO or nullpage)
 bool reserved_physical_address(uintptr_t pa) {
@@ -131,7 +154,7 @@ void memshow() {
     uint32_t old_ypos = fbInfo.ypos;
 
     fbInfo.xpos = 0;
-    fbInfo.ypos = ((fbInfo.height / font->height) / 2) - 4;
+    fbInfo.ypos = ((fbInfo.height / font->height) / 2);
 
     printf("PHYSICAL MEMORY");
 

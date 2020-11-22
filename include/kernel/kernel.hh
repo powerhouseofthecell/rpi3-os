@@ -2,6 +2,7 @@
 #define RPI3OS_KERNEL_HH
 #include "common/types.hh"
 #include "kernel/pagetable.hh"
+#include "kernel/proc.hh"
 
 // Kernel start address
 #define KERNEL_START_ADDR       0x80000

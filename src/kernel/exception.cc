@@ -1,4 +1,5 @@
 #include "kernel/uart.hh"
+#include "kernel/regstate.hh"
 #include "common/stdlib.hh"
 
 /**
@@ -9,14 +10,12 @@ extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long
     uart_puts(itoa(type, 10));
     uart_puts(") ");
     switch(type) {
-        case 0: uart_puts("Synchronous"); break;
-        case 1: uart_puts("IRQ"); break;
+        case 0: case 8: uart_puts("Synchronous"); break;
+        case 1: case 9: uart_puts("IRQ"); break;
         case 2: uart_puts("FIQ"); break;
         case 3: uart_puts("SError"); break;
         default: {
-            uart_puts("UNHANDLED EXCEPTION: ");
-            uart_puts(itoa(type, 10));
-            uart_puts("\n");
+            uart_puts("UNHANDLED EXCEPTION\n");
             while(1);
         }
     }

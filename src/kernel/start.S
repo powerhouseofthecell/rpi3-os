@@ -123,6 +123,9 @@ disable_interrupts:
     mrs x3, elr_el1
     stp x0, x1, [sp, #-16]!
     stp x2, x3, [sp, #-16]!
+
+    // pass the stack pointer as the first arg
+    mov x0, sp
 .endm
 
 // restore state
@@ -155,6 +158,42 @@ disable_interrupts:
 	eret
 .endm
 
+.global exception_return
+exception_return:
+    // proc* in x0, save to x4
+    mov x4, x0
+
+    // proc* + 16 is regs
+    add x1, x0, #16
+    mov sp, x1
+
+    // restore special system registers
+    ldp x2, x3, [sp], #16
+    ldp x0, x1, [sp], #16
+    msr elr_el1,    x3
+    msr spsr_el1,   x2
+    msr sp_el0,     x1
+    msr tpidr_el0,  x0
+
+    // restore general purpose registers
+    ldp	x30, xzr, [sp], #16
+    ldp	x28, x29, [sp], #16
+    ldp	x26, x27, [sp], #16
+    ldp	x24, x25, [sp], #16
+    ldp	x22, x23, [sp], #16
+    ldp	x20, x21, [sp], #16
+    ldp	x18, x19, [sp], #16
+    ldp	x16, x17, [sp], #16
+    ldp	x14, x15, [sp], #16
+    ldp	x12, x13, [sp], #16
+    ldp	x10, x11, [sp], #16
+    ldp	x8, x9,   [sp], #16
+    ldp	x6, x7,   [sp], #16
+    ldp	x4, x5,   [sp], #16
+    ldp	x2, x3,   [sp], #16
+	ldp	x0, x1,   [sp], #16
+	eret
+
 // a macro to create vector entries
 .macro ventry label
     .balign  0x80
@@ -175,7 +214,7 @@ _vectors:
     ventry unhandled_exception_7
 
     ventry unhandled_exception_8
-    ventry unhandled_exception_9
+    ventry irq_wrapper
     ventry unhandled_exception_10
     ventry unhandled_exception_11
 
