@@ -24,7 +24,12 @@ pageinfo pages[NPAGES];
 // the proc table
 proc ptable[NPROC];
 
-proc* current = nullptr;
+proc* current;
+
+// returns the address of the current proc's regs
+extern "C" void* get_current_regs() {
+    return (void*) &current->regs;
+}
 
 extern "C" [[noreturn]] void exception_return(proc* p);
 
@@ -40,10 +45,7 @@ void constructors_init() {
 }
 
 // handle timer interrupts
-extern "C" void irq_handler(regstate* regs) {
-    current->regs = *regs;
-    regs = &current->regs;
-
+extern "C" void irq_handler() {
     // increment our "clock's" ticks
     // reset after (hr * 60 min/hr * 60 sec/min * HZ irq/sec) irqs
     ticks = (ticks + 1) % (1 * 60 * 60 * HZ);
@@ -66,6 +68,11 @@ extern "C" void irq_handler(regstate* regs) {
     }
 
     exception_return(current);
+}
+
+extern "C" void syscall_handler(uint16_t syscallno) {
+    printf("syscall: %i, %i\n", current->pid, syscallno);
+    assert(false);
 }
 
 // the main initialization function for our kernel

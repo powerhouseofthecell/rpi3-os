@@ -19,6 +19,8 @@ int user_main(int cmd) {
         }
     }
 
+    asm volatile("svc #42");
+
     while (1);
 
     return 1;

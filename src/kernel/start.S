@@ -97,39 +97,52 @@ disable_interrupts:
     ret
 
 // save state
-.macro	kernel_entry    
-    // save general purpose registers
+.macro	kernel_entry
+    // save general purpose registers to kernel stack
 	stp	x0, x1,   [sp, #-16]!
-	stp	x2, x3,   [sp, #-16]!
+    stp	x2, x3,   [sp, #-16]!
 	stp	x4, x5,   [sp, #-16]!
-	stp	x6, x7,   [sp, #-16]!
-	stp	x8, x9,   [sp, #-16]!
-	stp	x10, x11, [sp, #-16]!
-	stp	x12, x13, [sp, #-16]!
-	stp	x14, x15, [sp, #-16]!
-	stp	x16, x17, [sp, #-16]!
-	stp	x18, x19, [sp, #-16]!
-	stp	x20, x21, [sp, #-16]!
-	stp	x22, x23, [sp, #-16]!
-	stp	x24, x25, [sp, #-16]!
-	stp	x26, x27, [sp, #-16]!
-	stp	x28, x29, [sp, #-16]!
-	stp	x30, xzr, [sp, #-16]!
+
+    // get the address of the current regs
+    bl get_current_regs
+    mov x4, x0
 
     // load special system registers
     mrs x0, tpidr_el0
     mrs x1, sp_el0
     mrs x2, spsr_el1
     mrs x3, elr_el1
-    stp x0, x1, [sp, #-16]!
-    stp x2, x3, [sp, #-16]!
+    stp x2, x3, [x4], #16
+    stp x0, x1, [x4], #16
+
+    // load the general purpose registers
+    stp	x30, xzr, [x4], #16
+    stp	x28, x29, [x4], #16
+    stp	x26, x27, [x4], #16
+    stp	x24, x25, [x4], #16
+    stp	x22, x23, [x4], #16
+    stp	x20, x21, [x4], #16
+    stp	x18, x19, [x4], #16
+    stp	x16, x17, [x4], #16
+    stp	x14, x15, [x4], #16
+    stp	x12, x13, [x4], #16
+    stp	x10, x11, [x4], #16
+    stp	x8, x9, [x4], #16
+    stp	x6, x7, [x4], #16
+    
+    mov x6, x4
+
+    // we saved 6 registers to the stack
+    ldp x4, x5, [sp], #16
+    ldp x2, x3, [sp], #16
+    ldp x0, x1, [sp], #16
+    stp	x4, x5, [x6], #16
+    stp	x2, x3, [x6], #16
+    stp	x0, x1, [x6], #16
 
     // load the kernel pagetable
     ldr x0, =_kernel_end
     msr ttbr0_el1, x0
-
-    // pass the stack pointer as the first arg
-    mov x0, sp
 .endm
 
 // restore state
@@ -165,6 +178,7 @@ disable_interrupts:
 .global exception_return
 exception_return:
     // proc* in x0
+
     // load this proc's pagetable
     ldr x1, [x0]
     msr ttbr0_el1, x1
@@ -221,7 +235,7 @@ _vectors:
     ventry unhandled_exception_6
     ventry unhandled_exception_7
 
-    ventry unhandled_exception_8
+    ventry syscall_wrapper
     ventry irq_wrapper
     ventry unhandled_exception_10
     ventry unhandled_exception_11
@@ -236,120 +250,35 @@ irq_wrapper:
 	kernel_entry
 	b	irq_handler
 
-// a block of exception handlers for unimplemented exceptions
-unhandled_exception_0:
-    mov     x0, #0
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
+// a wrapper for handling syscalls
+syscall_wrapper:
+    kernel_entry
+    
+    // check if it was a syscall
+    mrs x0, esr_el1
+    lsr x1, x0, #26
+    cmp x1, #0x15
+    bne unhandled_exception_8
 
-unhandled_exception_1:
-    mov     x0, #1
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
+    // it was a syscall, pass the syscall number as the first arg
+    and x0, x0, #0xFFFF
+    b   syscall_handler
 
-unhandled_exception_2:
-    mov     x0, #2
+// a generator for unhandled exception handlers
+.altmacro
+.macro unhandled_exception_generator num
+unhandled_exception_\num:
+    mov     x0, #\num
     mrs     x1, esr_el1
     mrs     x2, elr_el1
     mrs     x3, spsr_el1
     mrs     x4, far_el1
     b       exc_handler
+.endm
 
-unhandled_exception_3:
-    mov     x0, #3
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
-
-unhandled_exception_4:
-    mov     x0, #4
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
-unhandled_exception_5:
-    mov     x0, #5
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
-unhandled_exception_6:
-    mov     x0, #6
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
-unhandled_exception_7:
-    mov     x0, #7
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
-unhandled_exception_8:
-    mov     x0, #8
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
-unhandled_exception_9:
-    mov     x0, #9
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
-unhandled_exception_10:
-    mov     x0, #10
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
-unhandled_exception_11:
-    mov     x0, #11
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
-unhandled_exception_12:
-    mov     x0, #12
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
-unhandled_exception_13:
-    mov     x0, #13
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
-unhandled_exception_14:
-    mov     x0, #14
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
-unhandled_exception_15:
-    mov     x0, #15
-    mrs     x1, esr_el1
-    mrs     x2, elr_el1
-    mrs     x3, spsr_el1
-    mrs     x4, far_el1
-    b       exc_handler
+// generate all 16 exception handlers for unhandled exceptions
+.set unhandled_exception_num, 0
+.rept 16
+unhandled_exception_generator %unhandled_exception_num
+.set unhandled_exception_num, unhandled_exception_num + 1
+.endr
