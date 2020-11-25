@@ -17,5 +17,5 @@ void init_interrupts() {
     *local_timer = reloadVal | LOCAL_TIMER_ENABLE | LOCAL_TIMER_IRQ_ENABLE;
     
     // enables interrupts at the system level
-    enable_interrupts();
+    // enable_interrupts();
 }

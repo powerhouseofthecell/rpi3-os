@@ -24,6 +24,10 @@ pageinfo pages[NPAGES];
 // the proc table
 proc ptable[NPROC];
 
+proc* current = nullptr;
+
+extern "C" [[noreturn]] void exception_return(proc* p);
+
 // call and initialize cpp constructors
 void constructors_init() {
     typedef void (*constructor_function)();
@@ -37,6 +41,9 @@ void constructors_init() {
 
 // handle timer interrupts
 extern "C" void irq_handler(regstate* regs) {
+    current->regs = *regs;
+    regs = &current->regs;
+
     // increment our "clock's" ticks
     // reset after (hr * 60 min/hr * 60 sec/min * HZ irq/sec) irqs
     ticks = (ticks + 1) % (1 * 60 * 60 * HZ);
@@ -57,9 +64,9 @@ extern "C" void irq_handler(regstate* regs) {
     if (ticks % 10 == 0) {
         memshow();
     }
-}
 
-extern "C" [[noreturn]] void exception_return(proc* p);
+    exception_return(current);
+}
 
 // the main initialization function for our kernel
 extern "C" void kernel_main() {
@@ -82,21 +89,25 @@ extern "C" void kernel_main() {
     printf("Current Level: %i\n", getCurrentEL());
 
     // setup the initial userland process
-    proc test_proc;
-    test_proc.regs.reg_x0 = 42;
-    test_proc.regs.reg_elr = (uint64_t) &user_main;
-    test_proc.regs.reg_spsr = (1<<6) | (1<<8) | (1<<9);
+    ptable[1].regs.reg_x0 = 1;
+    ptable[1].regs.reg_elr = (uint64_t) &user_main;
+
+    // enable userland interrupts
+    ptable[1].regs.reg_spsr = (1<<6) | (0<<7) | (1<<8) | (1<<9);
     
     uint64_t stack_base = (uint64_t) kalloc_page();
     pages[stack_base / PAGESIZE].owner = 1;
-    test_proc.regs.reg_sp = stack_base + PAGESIZE;
+    ptable[1].regs.reg_sp = stack_base + PAGESIZE;
 
-    test_proc.pt = kernel_pagetable;
-    test_proc.pid = 1;
-    test_proc.state = P_RUNNABLE;
+    ptable[1].pt = kernel_pagetable;
+    ptable[1].pid = 1;
+    ptable[1].state = P_RUNNABLE;
+
+    // the currently running process
+    current = &ptable[1];
 
     // doesn't return
-    exception_return(&test_proc);
+    exception_return(current);
 
     // shouldn't get here
     assert(false);
@@ -125,7 +136,8 @@ bool allocatable_physical_address(uintptr_t pa) {
 void* kalloc_page() {
     for (uintptr_t pa = 0; pa < MEMSIZE_PHYSICAL; pa += PAGESIZE) {
         if (allocatable_physical_address(pa)
-            && !pages[pa / PAGESIZE].used()) {
+            && !pages[pa / PAGESIZE].used()
+        ) {
             ++pages[pa / PAGESIZE].refcount;
             memset((void*) pa, 0xAA, PAGESIZE);
             return (void*) pa;
