@@ -4,6 +4,8 @@
 #include "kernel/pagetable.hh"
 #include "common/stdlib.hh"
 
+
+#define MAX_PT_LEVEL 2
 // `vmiter` and `ptiter` are iterator types for x86-64 page tables.
 
 
@@ -128,7 +130,7 @@ class ptiter {
 
 
 inline vmiter::vmiter(pagetable* pt, uintptr_t va)
-    : pt_(pt), pep_(&pt_->entry[0]), level_(2), perm_(initial_perm), va_(0) {
+    : pt_(pt), pep_(&pt_->entry[0]), level_(MAX_PT_LEVEL), perm_(initial_perm), va_(0) {
     real_find(va);
 }
 inline uintptr_t vmiter::va() const {

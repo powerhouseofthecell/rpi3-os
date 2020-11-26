@@ -74,6 +74,8 @@ extern "C" void irq_handler() {
 
 // interrupts are off by default in the syscall_handler
 extern "C" [[noreturn]] void syscall_handler(uint16_t syscallno) {
+    uint64_t new_page;
+
     // place return values in x0, then break to "return"
     switch (syscallno) {
         case SYSCALL_GETPID:
@@ -83,6 +85,16 @@ extern "C" [[noreturn]] void syscall_handler(uint16_t syscallno) {
         case SYSCALL_YIELD:
             schedule();
             assert(false);
+            break;
+        
+        case SYSCALL_PAGE_ALLOC:
+            new_page = (uint64_t) kalloc_page();
+
+            if ((void*) new_page != nullptr) {
+                pages[new_page / PAGESIZE].owner = current->pid;
+            }
+            
+            //vmiter(current->pt, current->heap_top).map(new_page);
             break;
 
         default: {
@@ -136,6 +148,24 @@ extern "C" void kernel_main() {
     ptable[1].regs.reg_sp = stack_base + PAGESIZE;
 
     ptable[1].pt = kernel_pagetable;
+    assert(ptable[1].pt != nullptr);
+
+    // copy the general pagetable
+    pagetable* new_pt = (pagetable*) kalloc_page();
+    assert(new_pt != nullptr);
+    memset(new_pt, 0x00, PAGESIZE);
+    pages[(uint64_t) new_pt / PAGESIZE].owner = 1;
+
+    for (vmiter kpt(kernel_pagetable), upt(new_pt);
+        kpt.va() < MEMSIZE_PHYSICAL;
+        kpt += PAGESIZE, upt += PAGESIZE
+    ) {
+        upt.map(kpt.pa(), kpt.perm());
+    }
+
+    printf("PT copied\n");
+
+
     ptable[1].state = P_RUNNABLE;
 
     // doesn't return

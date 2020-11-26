@@ -153,4 +153,9 @@ inline void sys_yield() {
     make_syscall(SYSCALL_YIELD);
 }
 
+// allocate a page of memory and give it to the process
+inline uintptr_t sys_page_alloc() {
+    return make_syscall(SYSCALL_PAGE_ALLOC);
+}
+
 #endif

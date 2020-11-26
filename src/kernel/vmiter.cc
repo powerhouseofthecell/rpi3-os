@@ -28,14 +28,35 @@ uint64_t vmiter::range_perm(size_t sz) const {
 }
 
 void vmiter::down() {
+    // uart_puts("L");
+    // uart_puts(itoa(level_, 10));
+    // uart_puts(":");
+    // uart_puts(itoa(pageindex(va_, level_), 10));
+    // uart_puts(" @ ");
+
+    // uart_hex(*pep_ >>32);
+    // uart_hex(*pep_);
+    // uart_puts("\n");
     while (level_ > 0 && (*pep_ & (PTE_P | PTE_PS)) == PTE_P) {
         perm_ &= *pep_ | ~(PTE_P | PTE_W | PTE_U);
         --level_;
         uintptr_t pa = *pep_ & PTE_PAMASK;
         pagetable* pt = reinterpret_cast<pagetable*>(pa);
         pep_ = &pt->entry[pageindex(va_, level_)];
+
+        // uart_puts("L");
+        // uart_puts(itoa(level_, 10));
+        // uart_puts(":");
+        // uart_puts(itoa(pageindex(va_, level_), 10));
+        // uart_puts(" @ ");
+
+        // uart_hex(*pep_ >>32);
+        // uart_hex(*pep_);
+        // uart_puts("\n");
     }
+
     if ((*pep_ & PTE_PAMASK) >= 0x100000000UL) {
+        assert(false);
         while (true);
         // panic("Page table %p may contain uninitialized memory!\n"
         //       "(Page table contents: %p)\n", pt_, *pep_);
@@ -43,8 +64,8 @@ void vmiter::down() {
 }
 
 void vmiter::real_find(uintptr_t va) {
-    if (level_ == 3 || ((va_ ^ va) & ~pageoffmask(level_ + 1)) != 0) {
-        level_ = 3;
+    if (level_ == MAX_PT_LEVEL || ((va_ ^ va) & ~pageoffmask(level_ + 1)) != 0) {
+        level_ = MAX_PT_LEVEL;
         if (va_is_canonical(va)) {
             perm_ = initial_perm;
             pep_ = &pt_->entry[pageindex(va, level_)];
@@ -82,12 +103,13 @@ int vmiter::try_map(uintptr_t pa, int perm) {
     //assert(!(perm & ~perm_ & (PTE_P | PTE_W | PTE_U)));
 
     while (level_ > 0 && perm) {
-        // assert(!(*pep_ & PTE_P));
+        assert(!(*pep_ & PTE_P));
+
         pagetable* pt = (pagetable*) kalloc_page();
         if (!pt) {
             return -1;
         }
-        memset(pt, 0, PAGESIZE);
+        memset(pt, 0x00, PAGESIZE);
         *pep_ = (uintptr_t) pt | PTE_P | PTE_W | PTE_U;
         down();
     }
@@ -100,7 +122,7 @@ int vmiter::try_map(uintptr_t pa, int perm) {
 
 
 void ptiter::go(uintptr_t va) {
-    level_ = 3;
+    level_ = MAX_PT_LEVEL;
     pep_ = &pt_->entry[pageindex(va, level_)];
     va_ = va;
     down(false);
@@ -122,12 +144,12 @@ void ptiter::down(bool skip) {
             uintptr_t va = (va_ | pageoffmask(level_)) + 1;
             if ((va ^ va_) & ~pageoffmask(level_ + 1)) {
                 // up one level
-                if (level_ == 3) {
+                if (level_ == MAX_PT_LEVEL) {
                     va_ = VA_NONCANONMAX + 1;
                     return;
                 }
                 stop_level = level_ + 1;
-                level_ = 3;
+                level_ = MAX_PT_LEVEL;
                 pep_ = &pt_->entry[pageindex(va_, level_)];
             } else {
                 ++pep_;
