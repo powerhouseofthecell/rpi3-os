@@ -31,7 +31,9 @@ extern "C" void* get_current_regs() {
     return (void*) &current->regs;
 }
 
-extern "C" [[noreturn]] void exception_return(proc* p);
+[[noreturn]] void run(proc* p);
+[[noreturn]] void schedule();
+extern "C" void exception_return(proc* p);
 
 // call and initialize cpp constructors
 void constructors_init() {
@@ -44,7 +46,7 @@ void constructors_init() {
     }
 }
 
-// handle timer interrupts
+// handle timer interrupts, interrupts are disabled during this time
 extern "C" void irq_handler() {
     // increment our "clock's" ticks
     // reset after (hr * 60 min/hr * 60 sec/min * HZ irq/sec) irqs
@@ -70,12 +72,34 @@ extern "C" void irq_handler() {
     exception_return(current);
 }
 
-extern "C" void syscall_handler(uint16_t syscallno) {
-    printf("syscall: %i, %i\n", current->pid, syscallno);
-    assert(false);
+// interrupts are off by default in the syscall_handler
+extern "C" [[noreturn]] void syscall_handler(uint16_t syscallno) {
+    // place return values in x0, then break to "return"
+    switch (syscallno) {
+        case SYSCALL_GETPID:
+            current->regs.reg_x0 = current->pid;
+            break;
+
+        case SYSCALL_YIELD:
+            schedule();
+            assert(false);
+            break;
+
+        default: {
+            uart_puts("No such syscall: ");
+            uart_puts(itoa(syscallno, 10));
+            uart_puts("\n");
+
+            printf("No such syscall: %i\n", syscallno);
+
+            assert(false);
+        }
+    }
+    
+    run(current);
 }
 
-// the main initialization function for our kernel
+// the main initialization function for our kernel, interrupts are off in the kernel
 extern "C" void kernel_main() {
     // initialize the cpp constructors
     constructors_init();
@@ -95,6 +119,11 @@ extern "C" void kernel_main() {
     printf("lfb: %p\n", fbInfo.addr);
     printf("Current Level: %i\n", getCurrentEL());
 
+    // initialize the ptable
+    for (pid_t p = 1; p < NPROC; ++p) {
+        ptable[p].pid = p;
+    }
+
     // setup the initial userland process
     ptable[1].regs.reg_x0 = 1;
     ptable[1].regs.reg_elr = (uint64_t) &user_main;
@@ -107,18 +136,37 @@ extern "C" void kernel_main() {
     ptable[1].regs.reg_sp = stack_base + PAGESIZE;
 
     ptable[1].pt = kernel_pagetable;
-    ptable[1].pid = 1;
     ptable[1].state = P_RUNNABLE;
 
-    // the currently running process
-    current = &ptable[1];
-
     // doesn't return
-    exception_return(current);
+    run(&ptable[1]);
 
     // shouldn't get here
     assert(false);
 }    
+
+// checks some basics about the process, then runs process p
+void run(proc* p) {
+    assert(p->state == P_RUNNABLE);
+    current = p;
+
+    exception_return(p);
+
+    assert(false);
+}
+
+// a basic scheduler that picks the next runnable process and runs it
+void schedule() {
+    pid_t idx;
+    for (pid_t pid_off = 0; pid_off < NPROC; ++pid_off) {
+        idx = (current->pid + pid_off + 1) % NPROC;
+        if (ptable[idx].state == P_RUNNABLE) {
+            run(&ptable[idx]);
+        }
+    }
+
+    assert(false);
+}
 
 
 // return true iff pa is reserved for special uses (MMIO or nullpage)

@@ -19,9 +19,11 @@ int user_main(int cmd) {
         }
     }
 
-    asm volatile("svc #42");
+    printf("My pid is %i!\n", sys_getpid());
 
-    while (1);
+    while (1) {
+        sys_yield();
+    }
 
     return 1;
 }

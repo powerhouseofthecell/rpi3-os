@@ -62,6 +62,7 @@ _setup_end:
     bl      memzero
 
     // set stack before our code
+    // we'll use the top of the stack to store the original stack pointer
     ldr     x1, =__kernel_stack_top
     mov     sp, x1
 
@@ -96,7 +97,7 @@ disable_interrupts:
     msr daifset, #2
     ret
 
-// save state
+// save state and setup the proc* current->regs
 .macro	kernel_entry
     // save general purpose registers to kernel stack
 	stp	x0, x1,   [sp, #-16]!
@@ -254,6 +255,9 @@ irq_wrapper:
 syscall_wrapper:
     kernel_entry
     
+    ldr x0, =__kernel_stack_top
+    mov sp, x0
+
     // check if it was a syscall
     mrs x0, esr_el1
     lsr x1, x0, #26
@@ -262,7 +266,8 @@ syscall_wrapper:
 
     // it was a syscall, pass the syscall number as the first arg
     and x0, x0, #0xFFFF
-    b   syscall_handler
+
+    b syscall_handler
 
 // a generator for unhandled exception handlers
 .altmacro

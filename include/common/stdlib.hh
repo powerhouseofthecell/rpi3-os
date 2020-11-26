@@ -126,4 +126,31 @@ inline void _assertion_failure(const char* file, int line) {
     while (true);
 }
 
+// syscalls!
+#define SYSCALL_GETPID          1
+#define SYSCALL_YIELD           2
+#define SYSCALL_PANIC           3
+#define SYSCALL_PAGE_ALLOC      4
+#define SYSCALL_FORK            5
+#define SYSCALL_EXIT            6
+
+__always_inline uint64_t make_syscall(uint16_t syscallno) {
+    asm volatile("svc %0" : : "i" (syscallno));
+
+    uint64_t ret_val;
+    asm volatile("mov %0, x0" : "=r" (ret_val));
+
+    return ret_val;
+}
+
+// return the pid for the current process
+inline pid_t sys_getpid() {
+    return make_syscall(SYSCALL_GETPID);
+}
+
+// yield and allow another process to run
+inline void sys_yield() {
+    make_syscall(SYSCALL_YIELD);
+}
+
 #endif
