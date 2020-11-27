@@ -147,15 +147,13 @@ extern "C" void kernel_main() {
     pages[stack_base / PAGESIZE].owner = 1;
     ptable[1].regs.reg_sp = stack_base + PAGESIZE;
 
-    ptable[1].pt = kernel_pagetable;
-    assert(ptable[1].pt != nullptr);
-
     // copy the general pagetable
     pagetable* new_pt = (pagetable*) kalloc_page();
     assert(new_pt != nullptr);
     memset(new_pt, 0x00, PAGESIZE);
     pages[(uint64_t) new_pt / PAGESIZE].owner = 1;
 
+    // copy the physical memory mappings
     for (vmiter kpt(kernel_pagetable), upt(new_pt);
         kpt.va() < MEMSIZE_PHYSICAL;
         kpt += PAGESIZE, upt += PAGESIZE
@@ -163,8 +161,24 @@ extern "C" void kernel_main() {
         upt.map(kpt.pa(), kpt.perm());
     }
 
-    printf("PT copied\n");
+    // copy the console mappings
+    uint64_t nearest_section = round_down(fbInfo.addr, SECTION_SIZE);
+    for (vmiter kpt(kernel_pagetable, nearest_section), upt(new_pt, nearest_section);
+        kpt.va() < nearest_section + 2*SECTION_SIZE;
+        kpt += SECTION_SIZE, upt += SECTION_SIZE
+    ) {
+        upt.map(kpt.pa(), kpt.perm());
+    }
 
+    // walk the pagetable and mark ownership
+    for (ptiter it(new_pt); !it.done(); it.next()) {
+        pages[it.pa() / PAGESIZE].owner = 1;
+    }
+
+    ptable[1].pt = new_pt;
+    assert(ptable[1].pt != nullptr);
+
+    printf("PT copied\n");
 
     ptable[1].state = P_RUNNABLE;
 

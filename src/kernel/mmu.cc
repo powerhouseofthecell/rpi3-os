@@ -40,8 +40,7 @@ void mark_as_used(uint64_t pa) {
 /**
  * Set up pagetables and enable virtual memory
  */
-void mmu_init()
-{
+void mmu_init() {
     unsigned long data_page = (unsigned long) &_data / PAGESIZE;
     unsigned long r, b;
 
@@ -49,7 +48,6 @@ void mmu_init()
     pagetable* pagetables = (pagetable*) &_kernel_end;
 
     /* setup initial pagetables (identity mapped in user/EL0-addresses) */
-    // NOTE: addresses here are physical because MMU has not been switched on yet
     
     // mark the stack page as used
     uint64_t stack_page = ((uint64_t) &__kernel_stack_top) - PAGESIZE;
@@ -74,7 +72,7 @@ void mmu_init()
         PTE_PWU |     // non-privileged
         PT_ISH;       // inner shareable
 
-    // identity L2, first 2M block : our OS assumes this is all of physical memory
+    // identity L2
     mark_as_used((uint64_t) &pagetables[2]);
     pagetables[2].entry[0] = (pageentry_t) (&pagetables[3]) | // physical address
         PTE_PAGE|

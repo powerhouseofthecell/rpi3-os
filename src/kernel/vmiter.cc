@@ -32,12 +32,15 @@ void vmiter::down() {
     // uart_puts(itoa(level_, 10));
     // uart_puts(":");
     // uart_puts(itoa(pageindex(va_, level_), 10));
-    // uart_puts(" @ ");
+    // uart_puts(" contains ");
 
     // uart_hex(*pep_ >>32);
     // uart_hex(*pep_);
     // uart_puts("\n");
-    while (level_ > 0 && (*pep_ & (PTE_P | PTE_PS)) == PTE_P) {
+    while (
+        (level_ > 0 && (*pep_ & (PTE_P | PTE_PS)) == PTE_P && (*pep_ & PTE_PAGE) == PTE_PAGE) || 
+        (level_ > 1 && (*pep_ & (PTE_P | PTE_PS)) == PTE_P && (*pep_ & PTE_PAGE) == 0)
+    ) {
         perm_ &= *pep_ | ~(PTE_P | PTE_W | PTE_U);
         --level_;
         uintptr_t pa = *pep_ & PTE_PAMASK;
@@ -48,7 +51,7 @@ void vmiter::down() {
         // uart_puts(itoa(level_, 10));
         // uart_puts(":");
         // uart_puts(itoa(pageindex(va_, level_), 10));
-        // uart_puts(" @ ");
+        // uart_puts(" contains ");
 
         // uart_hex(*pep_ >>32);
         // uart_hex(*pep_);
@@ -56,6 +59,13 @@ void vmiter::down() {
     }
 
     if ((*pep_ & PTE_PAMASK) >= 0x100000000UL) {
+        uart_puts("pagetable ");
+        uart_hex((uint64_t)pt_>>32);
+        uart_hex((uint64_t)pt_);
+        uart_puts(" contains ");
+        uart_hex(*pep_>>32);
+        uart_hex(*pep_);
+
         assert(false);
         while (true);
         // panic("Page table %p may contain uninitialized memory!\n"
@@ -100,21 +110,41 @@ int vmiter::try_map(uintptr_t pa, int perm) {
     } else {
         assert(!(pa & PTE_P));
     }
-    //assert(!(perm & ~perm_ & (PTE_P | PTE_W | PTE_U)));
+    assert(!(perm & ~perm_ & (PTE_P | PTE_W | PTE_U)));
 
-    while (level_ > 0 && perm) {
+    // this goes down to the lowest level for respective mappings
+    // page: L0
+    // block: L1
+    while (((level_ > 0 && (perm & PTE_PAGE) == PTE_PAGE)
+        || (level_ > 1 && (perm & PTE_PAGE) == 0)) && perm
+    ) {
         assert(!(*pep_ & PTE_P));
-
         pagetable* pt = (pagetable*) kalloc_page();
         if (!pt) {
             return -1;
         }
         memset(pt, 0x00, PAGESIZE);
-        *pep_ = (uintptr_t) pt | PTE_P | PTE_W | PTE_U;
+
+        // uart_puts("setting L");
+        // uart_puts(itoa(level_, 10));
+        // uart_puts(" pt with perm ");
+        // uart_hex(perm);
+        // uart_puts(" @ ");
+        // uart_hex((uint64_t) pt>>32);
+        // uart_hex((uint64_t) pt);
+        // uart_puts("\n");
+
+        *pep_ = (uintptr_t) pt | perm | PTE_A;
         down();
     }
 
-    if (level_ == 0) {
+    if (level_ == 0 || (level_ == 1 && (perm & PTE_PAGE) == 0)) {
+        // uart_puts("setting ");
+        // uart_hex(perm);
+        // uart_puts(" @ ");
+        // uart_hex(pa>>32);
+        // uart_hex(pa);
+        // uart_puts("\n");
         *pep_ = pa | perm;
     }
     return 0;

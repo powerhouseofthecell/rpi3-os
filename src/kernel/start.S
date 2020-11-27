@@ -180,7 +180,7 @@ disable_interrupts:
 exception_return:
     // proc* in x0
 
-    // load this proc's pagetable
+    // switch to this proc's pagetable
     ldr x1, [x0]
     msr ttbr0_el1, x1
 
