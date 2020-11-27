@@ -35,8 +35,6 @@ inline int toupper(int c);
 char* itoa(int num, int base);
 int atoi(char * num);
 
-unsigned long getCurrentEL();
-
 // single character manipulations/properties
 inline bool isspace(int c) {
     return (c >= '\t' && c <= '\r') || c == ' ';

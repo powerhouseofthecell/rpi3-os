@@ -44,6 +44,10 @@ void* kalloc_page();
 // frees a kernel page, does nothing on failure (the best exception handling, i know)
 void kfree_page(void* pa);
 
+// displays a visualization of memory to the screen
 void memshow();
+
+// returns the current exception level
+unsigned long getCurrentEL();
 
 #endif

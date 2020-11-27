@@ -60,21 +60,21 @@ void mmu_init() {
 
     // TTBR0, identity L1
     mark_as_used((uint64_t) &pagetables[0]);
-    pagetables[0].entry[0] = (pageentry_t) (&pagetables[2]) |    // physical address
+    pagetables[0].entry[0] = (pageentry_t) (&pagetables[1]) |    // physical address
         PTE_PAGE|
         PTE_A   |     // accessed flag. Without this we're going to have a Data Abort exception
         PTE_PWU |     // non-privileged
         PT_ISH;       // inner shareable
 
-    pagetables[0].entry[1] = (pageentry_t) (&pagetables[6]) |    // physical address
+    pagetables[0].entry[1] = (pageentry_t) (&pagetables[2]) |    // physical address
         PTE_PAGE|
         PTE_A   |     // accessed flag. Without this we're going to have a Data Abort exception
         PTE_PWU |     // non-privileged
         PT_ISH;       // inner shareable
 
     // identity L2
-    mark_as_used((uint64_t) &pagetables[2]);
-    pagetables[2].entry[0] = (pageentry_t) (&pagetables[3]) | // physical address
+    mark_as_used((uint64_t) &pagetables[1]);
+    pagetables[1].entry[0] = (pageentry_t) (&pagetables[3]) | // physical address
         PTE_PAGE|
         PTE_A   |     // accessed flag
         PTE_PWU |     // non-privileged
@@ -84,7 +84,7 @@ void mmu_init() {
     b = MMIO_BASE >> SECTION_SHIFT;
     // skip 0th, since that's above
     for (r = 1; r < 512; r++) {
-        pagetables[2].entry[r] = (pageentry_t) ((r << SECTION_SHIFT)) |  // physical address
+        pagetables[1].entry[r] = (pageentry_t) ((r << SECTION_SHIFT)) |  // physical address
         PTE_BLOCK|
         PTE_P    |    // map 2M block
         PTE_A    |    // accessed flag
@@ -93,9 +93,9 @@ void mmu_init() {
     }
 
     // map other 2M blocks in L2
-    mark_as_used((uint64_t) &pagetables[6]);
+    mark_as_used((uint64_t) &pagetables[2]);
     for (r = 0; r < 512; ++r) {
-        pagetables[6].entry[r] = (pageentry_t) (((r + 512) << SECTION_SHIFT)) |
+        pagetables[2].entry[r] = (pageentry_t) (((r + 512) << SECTION_SHIFT)) |
             PTE_BLOCK|
             PTE_P    |
             PTE_A    |
@@ -126,38 +126,6 @@ void mmu_init() {
         }
         
     }
-
-    // TTBR1, kernel L1 @ index 511
-    mark_as_used((uint64_t) &pagetables[1]);
-    pagetables[1].entry[511] = (pageentry_t) (&pagetables[4]) | // physical address
-        PT_PAGE |     // we have area in it mapped by pages
-        PTE_A   |     // accessed flag
-        PT_ISH  |     // inner shareable
-        PT_MEM;       // normal memory
-
-    // kernel L2 @ index 511
-    mark_as_used((uint64_t) &pagetables[4]);
-    pagetables[4].entry[511] = (pageentry_t) (&pagetables[5]) |   // physical address
-        PT_PAGE |     // we have area in it mapped by pages
-        PTE_A   |     // accessed flag
-        PT_ISH  |     // inner shareable
-        PT_MEM;       // normal memory
-
-    // kernel L3 @ index 0: map a page of MMIO addresses
-    mark_as_used((uint64_t) &pagetables[5]);
-    pagetables[5].entry[0] = (pageentry_t) (MMIO_BASE + 0x00201000) |   // physical address
-        PT_PAGE |     // map 4k
-        PTE_A   |     // accessed flag
-        PT_NX   |     // no execute
-        PT_OSH  |     // outter shareable
-        PT_DEV;       // device memory
-
-    // kernel L3 @ index 1: map a page of the stack
-    pagetables[5].entry[1] = (pageentry_t) (0x7F000) |   // physical address
-        PT_PAGE |     // map 4k
-        PTE_A   |     // accessed flag
-        PT_NX   |     // no execute
-        PT_ISH;       // outter shareable
 
     /* SECTION: setup system registers to enable MMU */
 
@@ -195,7 +163,7 @@ void mmu_init() {
         (0b11LL << 28)  | // SH1=3 inner
         (0b01LL << 26)  | // ORGN1=1 write back
         (0b01LL << 24)  | // IRGN1=1 write back
-        (0b0LL  << 23)  | // EPD1 enable higher half
+        //(0b0LL  << 23)  | // EPD1 enable higher half
         (25LL   << 16)  | // T1SZ=25, 3 levels (512G)
         TCR_TG0_4K      | // TG0=4k
         (0b11LL << 12)  | // SH0=3 inner
@@ -208,10 +176,7 @@ void mmu_init() {
     // tell the MMU where our translation tables are
     // lower half, user space
     asm volatile ("msr ttbr0_el1, %0" : : "r" ((unsigned long) &pagetables[0]));
-    
-    // upper half, kernel space
-    asm volatile ("msr ttbr1_el1, %0" : : "r" ((unsigned long) &pagetables[1]));
-
+  
     // finally, toggle some bits in system control register to enable page translation
     asm volatile ("dsb ish; isb; mrs %0, sctlr_el1" : "=r" (r));
     

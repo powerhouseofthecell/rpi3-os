@@ -24,6 +24,7 @@ pageinfo pages[NPAGES];
 // the proc table
 proc ptable[NPROC];
 
+// a pointer to the current process
 proc* current;
 
 // returns the address of the current proc's regs
@@ -111,26 +112,8 @@ extern "C" [[noreturn]] void syscall_handler(uint16_t syscallno) {
     run(current);
 }
 
-// the main initialization function for our kernel, interrupts are off in the kernel
-extern "C" void kernel_main() {
-    // initialize the cpp constructors
-    constructors_init();
-
-    // set up serial console
-    uart_init();
-
-    // set up linear frame buffer
-    lfb_init();
-
-    // initialize memory and the memory management unit
-    mmu_init();
-
-    // initialize interrupts (timer)
-    init_interrupts();
-
-    printf("lfb: %p\n", fbInfo.addr);
-    printf("Current Level: %i\n", getCurrentEL());
-
+// initialize the ptable and first process
+void proc_init() {
     // initialize the ptable
     for (pid_t p = 1; p < NPROC; ++p) {
         ptable[p].pid = p;
@@ -178,9 +161,46 @@ extern "C" void kernel_main() {
     ptable[1].pt = new_pt;
     assert(ptable[1].pt != nullptr);
 
-    printf("PT copied\n");
-
     ptable[1].state = P_RUNNABLE;
+}
+
+// the main initialization function for our kernel, interrupts are off in the kernel
+extern "C" void kernel_main() {
+    // initialize the cpp constructors
+    constructors_init();
+
+    // set up serial console
+    uart_init();
+
+    // set up linear frame buffer
+    lfb_init();
+
+    // initialize memory and the memory management unit
+    mmu_init();
+
+    // initialize interrupts (timer)
+    init_interrupts();
+
+    // (re-)map the kernel pagetable (changing perms for stack<-->data)
+    // for (vmiter it(kernel_pagetable, 0x1000); it.va() < MEMSIZE_PHYSICAL; it += PAGESIZE) {
+    //     int perms = PTE_P | PTE_A | PTE_W | PTE_PAGE | (3<<8);
+    //     // if (it.va() < KERNEL_STACK_TOP - PAGESIZE || it.va() >= (uint64_t) &_kernel_end) {
+    //     //     perms |= PTE_U;
+    //     // }
+    //     perms |= PTE_U;
+
+    //     it.map(it.pa(), perms);
+    // }
+    // map the kernel stack as non-user
+    vmiter(kernel_pagetable, KERNEL_STACK_TOP - PAGESIZE).map(
+        KERNEL_STACK_TOP - PAGESIZE,
+        PTE_P | PTE_A | PTE_W | PTE_PAGE | (3<<8)
+    );
+
+    printf("lfb: %p\n", fbInfo.addr);
+
+    // initialize the ptable and initial process
+    proc_init();
 
     // doesn't return
     run(&ptable[1]);
@@ -277,10 +297,9 @@ void memshow() {
             printf("\n%p\t", pa);
         }
 
-        color_idx = pages[page_num].owner;
-
         puts(" ");
         if (pages[page_num].used()) {
+            color_idx = pages[page_num].owner;
             putc(CONSOLE_SQUARE, COLORS[color_idx], BLACK);
         } else {
             putc(CONSOLE_SQUARE_OUTLINE, WHITE, BLACK);
@@ -289,4 +308,15 @@ void memshow() {
 
     fbInfo.xpos = old_xpos;
     fbInfo.ypos = old_ypos;
+}
+
+// returns the current exception level
+// NOTE: can only be called from the kernel
+unsigned long getCurrentEL() {
+    unsigned long el;
+
+    // read the current level from system register
+    asm volatile ("mrs %0, CurrentEL" : "=r" (el));
+
+    return el >> 2;
 }

@@ -21,6 +21,8 @@ int user_main(int cmd) {
 
     printf("My pid is %i!\n", sys_getpid());
 
+    //printf("random number? %i\n");
+
     while (1) {
         sys_yield();
     }

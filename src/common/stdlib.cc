@@ -282,17 +282,7 @@ int atoi(char * num) {
     return res;
 }
 
-// returns the current exception level
-unsigned long getCurrentEL() {
-    unsigned long el;
-
-    // read the current level from system register
-    asm volatile ("mrs %0, CurrentEL" : "=r" (el));
-
-    return el >> 2;
-}
-
-
+// BEGIN: console functions
 // x and y are pixel locations
 void write_pixel(uint32_t x, uint32_t y, uint32_t pixel) {
     unsigned int* location = (unsigned int*) (fbInfo.addr + y * ((fbInfo.depth / 8) * fbInfo.width) + x * (fbInfo.depth / 8));
@@ -301,7 +291,6 @@ void write_pixel(uint32_t x, uint32_t y, uint32_t pixel) {
     *location = pixel;
 }
 
-// BEGIN: console functions
 // clear the console by setting all pixels to reverse_video
 void clear_console() {
     for (int y = 0; y < fbInfo.height; ++y) {
