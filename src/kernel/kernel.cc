@@ -3,7 +3,6 @@
 #include "kernel/mmu.hh"
 #include "kernel/lfb.hh"
 #include "kernel/vmiter.hh"
-#include "kernel/delays.hh"
 #include "kernel/timer.hh"
 #include "kernel/proc.hh"
 
@@ -88,16 +87,32 @@ extern "C" [[noreturn]] void syscall_handler(uint16_t syscallno) {
             assert(false);
             break;
         
-        case SYSCALL_PAGE_ALLOC:
-            new_page = (uint64_t) kalloc_page();
-
-            if ((void*) new_page != nullptr) {
-                pages[new_page / PAGESIZE].owner = current->pid;
+        case SYSCALL_PAGE_ALLOC: {
+            // get a new page for the process
+            if (current->heap_top < MEMSIZE_VIRTUAL) {
+                new_page = (uint64_t) kalloc_page();
+                if (new_page == (uint64_t) nullptr) {
+                    current->regs.reg_x0 = (uint64_t) nullptr;
+                    break;
+                }
+            } else {
+                new_page = (uint64_t) nullptr;
+                current->regs.reg_x0 = (uint64_t) nullptr;
+                break;
             }
             
-            //vmiter(current->pt, current->heap_top).map(new_page);
-            break;
+            pages[new_page / PAGESIZE].owner = current->pid;
+            
+            // map the page in the process' pagetable
+            int perms = PTE_PWU | PTE_A | PTE_PAGE | (3<<8);
+            vmiter(current->pt, current->heap_top).map(new_page, perms);
 
+            current->regs.reg_x0 = current->heap_top;
+
+            current->heap_top += PAGESIZE;
+            
+            break;
+        }
         default: {
             uart_puts("No such syscall: ");
             uart_puts(itoa(syscallno, 10));
@@ -117,20 +132,22 @@ void proc_init() {
     // initialize the ptable
     for (pid_t p = 1; p < NPROC; ++p) {
         ptable[p].pid = p;
+        ptable[p].heap_top = 0x100000;
     }
 
     // setup the initial userland process
     ptable[1].regs.reg_x0 = 1;
     ptable[1].regs.reg_elr = (uint64_t) &user_main;
 
-    // enable userland interrupts
+    // enable userland interrupts (IRQ)
     ptable[1].regs.reg_spsr = (1<<6) | (0<<7) | (1<<8) | (1<<9);
     
+    // setup process stack
     uint64_t stack_base = (uint64_t) kalloc_page();
     pages[stack_base / PAGESIZE].owner = 1;
     ptable[1].regs.reg_sp = stack_base + PAGESIZE;
 
-    // copy the general pagetable
+    // copy the kernel pagetable
     pagetable* new_pt = (pagetable*) kalloc_page();
     assert(new_pt != nullptr);
     memset(new_pt, 0x00, PAGESIZE);
@@ -147,7 +164,7 @@ void proc_init() {
     // copy the console mappings
     uint64_t nearest_section = round_down(fbInfo.addr, SECTION_SIZE);
     for (vmiter kpt(kernel_pagetable, nearest_section), upt(new_pt, nearest_section);
-        kpt.va() < nearest_section + 2*SECTION_SIZE;
+        kpt.va() < nearest_section + 3*SECTION_SIZE;
         kpt += SECTION_SIZE, upt += SECTION_SIZE
     ) {
         upt.map(kpt.pa(), kpt.perm());
@@ -158,9 +175,10 @@ void proc_init() {
         pages[it.pa() / PAGESIZE].owner = 1;
     }
 
+    // set this process' page table
     ptable[1].pt = new_pt;
-    assert(ptable[1].pt != nullptr);
 
+    // mark this process as runnable
     ptable[1].state = P_RUNNABLE;
 }
 
@@ -191,6 +209,7 @@ extern "C" void kernel_main() {
 
     //     it.map(it.pa(), perms);
     // }
+
     // map the kernel stack as non-user
     vmiter(kernel_pagetable, KERNEL_STACK_TOP - PAGESIZE).map(
         KERNEL_STACK_TOP - PAGESIZE,

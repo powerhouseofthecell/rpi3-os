@@ -15,8 +15,10 @@
 struct proc {
     pagetable* pt;                      // process's page table
     pid_t pid;                          // process ID
-    int state = P_FREE;                          // process state (see above)
+    int state = P_FREE;                 // process state (see above)
     regstate regs;                      // process's registers
+
+    uint64_t heap_top = 0x00;
 };
 
 // Process table

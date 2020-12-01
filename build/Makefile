@@ -39,7 +39,7 @@ HEADERS = $(wildcard $(KER_HEAD)/*.h) $(wildcard $(KER_HEAD)/*.hh)
 
 build: $(OBJECTS) $(HEADERS)
 	$(TOOLCHAIN_PREFIX)-ld $(LINKERFLAGS) $(OBJECTS) -T linker.ld -o $(KERNEL_NAME).elf
-	$(TOOLCHAIN_PREFIX)-objcopy -j .text -j .rodata -j .data -j .bss -j .ctors -j .init_array -O binary $(KERNEL_NAME).elf $(KERNEL_NAME).img
+	$(TOOLCHAIN_PREFIX)-objcopy -O binary $(KERNEL_NAME).elf $(KERNEL_NAME).img
 
 # rule for making kernel source objects
 $(OBJ_DIR)/%.o: $(KER_SRC)/%.cc

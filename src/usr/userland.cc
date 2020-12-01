@@ -21,8 +21,22 @@ int user_main(int cmd) {
 
     printf("My pid is %i!\n", sys_getpid());
 
-    //printf("random number? %i\n");
+    int* pg;
+    // allocate until out of memory
+    while (1) {
+        pg = (int*) sys_page_alloc();
+        if (pg != nullptr) {
+            *pg = 42;
+            assert(*pg == 42);
+        } else {
+            printf("out of mem\n");
+            break;
+        }
 
+        sys_yield();
+    }
+
+    // yield forever
     while (1) {
         sys_yield();
     }

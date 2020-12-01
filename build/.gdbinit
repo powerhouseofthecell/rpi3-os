@@ -4,8 +4,7 @@ tui enable
 layout src
 layout regs
 
-b kernel_main
-b irq_wrapper
+b syscall_wrapper
 
 display/x $sp
 display/x $sp_el0

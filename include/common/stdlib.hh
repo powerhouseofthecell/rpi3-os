@@ -35,6 +35,11 @@ inline int toupper(int c);
 char* itoa(int num, int base);
 int atoi(char * num);
 
+#define RAND_MAX 0x7FFFFFFF
+int rand();
+void srand(unsigned seed);
+int rand(int min, int max);
+
 // single character manipulations/properties
 inline bool isspace(int c) {
     return (c >= '\t' && c <= '\r') || c == ' ';
