@@ -5,9 +5,9 @@
 #include "kernel/vmiter.hh"
 #include "kernel/timer.hh"
 #include "kernel/proc.hh"
-
 #include "common/types.hh"
 #include "common/stdlib.hh"
+#include "kernel/sd.hh"
 
 extern volatile uint64_t _data;
 extern volatile uint64_t _kernel_end;
@@ -231,6 +231,16 @@ extern "C" void kernel_main() {
     );
 
     printf("lfb: %p\n", fbInfo.addr);
+    printf("sd: %i\n", sd_init());
+
+    unsigned char buf[512];
+    sd_readblock(0, buf, 1);
+    for (int i = 0; i < 512; i++) {
+        if (i % 64 == 0) {
+            printf("\n\n");
+        } 
+        printf("%x", buf[i]);
+    }
 
     // initialize the ptable and initial process
     //proc_init();
@@ -239,7 +249,7 @@ extern "C" void kernel_main() {
     //run(&ptable[1]);
 
     // shouldn't get here
-    assert(false);
+    while (1) {};
 }    
 
 // checks some basics about the process, then runs process p

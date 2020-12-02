@@ -73,6 +73,11 @@ $(OBJ_DIR)/p-%: $(OBJ_DIR)/p-%.o $(COMMON_OBJECTS) process.ld
 	# link the process
 	$(TOOLCHAIN_PREFIX)-ld $(LINKERFLAGS) $(COMMON_OBJECTS) $< -T process.ld -o $@
 
+# rule for building the "sd card" file
+build-sd:
+	# TODO build sd
+	#cp 2020-08-20-raspios-buster-armhf-lite.img sd.img
+
 font_psf.o: font.psf
 	$(TOOLCHAIN_PREFIX)-ld -r -b binary -o font_psf.o font.psf
 
@@ -81,11 +86,11 @@ clean:
 	rm $(KERNEL_NAME).elf
 	rm $(KERNEL_NAME).img
 
-run: build-kernel
-	qemu-system-aarch64 -M raspi3 -kernel $(KERNEL_NAME).img -serial stdio
+run: build-kernel build-sd
+	qemu-system-aarch64 -M raspi3 -sd sd.img -kernel $(KERNEL_NAME).img -serial stdio
 
-run-debug: build-kernel
-	qemu-system-aarch64 -M raspi3 -kernel $(KERNEL_NAME).img -serial stdio -d int
+run-debug: build-kernel build-sd
+	qemu-system-aarch64 -M raspi3 -sd sd.img -kernel $(KERNEL_NAME).img -serial stdio -d int
 
-run-gdb: build-kernel
-	qemu-system-aarch64 -M raspi3 -kernel $(KERNEL_NAME).img -serial stdio -s -S -d int
+run-gdb: build-kernel build-sd
+	qemu-system-aarch64 -M raspi3 -sd sd.img -kernel $(KERNEL_NAME).img -serial stdio -s -S -d int
