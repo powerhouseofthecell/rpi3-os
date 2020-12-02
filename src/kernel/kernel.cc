@@ -1,15 +1,13 @@
 #include "kernel/kernel.hh"
-#include "kernel/uart.hh"
+#include "common/uart.hh"
 #include "kernel/mmu.hh"
-#include "kernel/lfb.hh"
+#include "common/lfb.hh"
 #include "kernel/vmiter.hh"
 #include "kernel/timer.hh"
 #include "kernel/proc.hh"
 
 #include "common/types.hh"
 #include "common/stdlib.hh"
-
-#include "usr/userland.hh"
 
 extern volatile uint64_t _data;
 extern volatile uint64_t _kernel_end;
@@ -113,6 +111,20 @@ extern "C" [[noreturn]] void syscall_handler(uint16_t syscallno) {
             
             break;
         }
+        
+        case SYSCALL_PAGE_FREE: {
+            uintptr_t ptr = (uintptr_t) current->regs.reg_x0;
+
+            assert(ptr == current->heap_top - PAGESIZE);
+            assert(ptr % PAGESIZE == 0);
+
+            void* pa = (void*) vmiter(current->pt, ptr).pa();
+            kfree_page(pa);
+
+            current->heap_top -= PAGESIZE;
+
+            break;
+        }
         default: {
             uart_puts("No such syscall: ");
             uart_puts(itoa(syscallno, 10));
@@ -137,7 +149,9 @@ void proc_init() {
 
     // setup the initial userland process
     ptable[1].regs.reg_x0 = 1;
-    ptable[1].regs.reg_elr = (uint64_t) &user_main;
+
+    // TODO: load a process properly from card
+    ptable[1].regs.reg_elr = 0x00;
 
     // enable userland interrupts (IRQ)
     ptable[1].regs.reg_spsr = (1<<6) | (0<<7) | (1<<8) | (1<<9);
@@ -219,10 +233,10 @@ extern "C" void kernel_main() {
     printf("lfb: %p\n", fbInfo.addr);
 
     // initialize the ptable and initial process
-    proc_init();
+    //proc_init();
 
     // doesn't return
-    run(&ptable[1]);
+    //run(&ptable[1]);
 
     // shouldn't get here
     assert(false);

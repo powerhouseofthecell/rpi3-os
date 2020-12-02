@@ -1,4 +1,4 @@
-#include "kernel/lfb.hh"
+#include "common/lfb.hh"
 
 // the global font header to use for this system
 psf_t* font = (psf_t*)&_binary_font_psf_start;

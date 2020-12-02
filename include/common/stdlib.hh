@@ -1,8 +1,8 @@
 #ifndef STDLIB_HH
 #define STDLIB_HH
 #include "common/types.hh"
-#include "kernel/uart.hh"
-#include "kernel/lfb.hh"
+#include "common/uart.hh"
+#include "common/lfb.hh"
 
 extern "C" {
 void* memcpy(void* dst, const void* src, size_t n);
@@ -136,8 +136,19 @@ inline void _assertion_failure(const char* file, int line) {
 #define SYSCALL_PAGE_ALLOC      4
 #define SYSCALL_FORK            5
 #define SYSCALL_EXIT            6
+#define SYSCALL_PAGE_FREE       7
 
 __always_inline uint64_t make_syscall(uint16_t syscallno) {
+    asm volatile("svc %0" : : "i" (syscallno));
+
+    uint64_t ret_val;
+    asm volatile("mov %0, x0" : "=r" (ret_val));
+
+    return ret_val;
+}
+
+__always_inline uint64_t make_syscall(uint16_t syscallno, uint64_t arg1) {
+    asm volatile("mov x0, %0" :: "r" (arg1));
     asm volatile("svc %0" : : "i" (syscallno));
 
     uint64_t ret_val;
@@ -159,6 +170,10 @@ inline void sys_yield() {
 // allocate a page of memory and give it to the process
 inline uintptr_t sys_page_alloc() {
     return make_syscall(SYSCALL_PAGE_ALLOC);
+}
+
+inline void sys_page_free(void* ptr) {
+    make_syscall(SYSCALL_PAGE_FREE, (uint64_t) ptr);
 }
 
 #endif

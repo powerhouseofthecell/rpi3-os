@@ -14,7 +14,7 @@ LINKERFLAGS = -Os --gc-sections -z max-page-size=0x1000 -static -nostdlib -nosta
 KERNEL_NAME=kernel8
 
 # Locations of the files
-KER_HEAD = ../include
+HEAD = ../include
 
 KER_SRC = ../src/kernel
 COMMON_SRC = ../src/common
@@ -28,38 +28,50 @@ COMMONSOURCES = $(wildcard $(COMMON_SRC)/*.cc)
 ASMSOURCES = $(wildcard $(KER_SRC)/*.S)
 USRSOURCES = $(wildcard $(USR_SRC)/*.cc)
 
-# object files
+# object files (for the kernel)
 OBJECTS += $(patsubst $(KER_SRC)/%.cc, $(OBJ_DIR)/%.o, $(KERSOURCES))
-OBJECTS += $(patsubst $(COMMON_SRC)/%.cc, $(OBJ_DIR)/%.o, $(COMMONSOURCES))
+
+COMMON_OBJECTS = $(patsubst $(COMMON_SRC)/%.cc, $(OBJ_DIR)/%.o, $(COMMONSOURCES)) font_psf.o
+OBJECTS += $(COMMON_OBJECTS)
+
 OBJECTS += $(patsubst $(KER_SRC)/%.S, $(OBJ_DIR)/%.o, $(ASMSOURCES))
-OBJECTS += $(patsubst $(USR_SRC)/%.cc, $(OBJ_DIR)/%.o, $(USRSOURCES))
-OBJECTS += font_psf.o
 
-HEADERS = $(wildcard $(KER_HEAD)/*.h) $(wildcard $(KER_HEAD)/*.hh)
+HEADERS = $(wildcard $(HEAD)/*.h) $(wildcard $(HEAD)/*.hh)
 
-build: $(OBJECTS) $(HEADERS)
-	$(TOOLCHAIN_PREFIX)-ld $(LINKERFLAGS) $(OBJECTS) -T linker.ld -o $(KERNEL_NAME).elf
+PROCESSES = $(patsubst $(USR_SRC)/%.cc, $(OBJ_DIR)/p-%, $(USRSOURCES))
+
+# how to build the kernel
+build-kernel: $(OBJECTS) $(HEADERS) kernel.ld
+	# link the kernel
+	$(TOOLCHAIN_PREFIX)-ld $(LINKERFLAGS) $(OBJECTS) -T kernel.ld -o $(KERNEL_NAME).elf
+
+	# copy the binary into raw img format for raspberry pi
 	$(TOOLCHAIN_PREFIX)-objcopy -O binary $(KERNEL_NAME).elf $(KERNEL_NAME).img
 
 # rule for making kernel source objects
 $(OBJ_DIR)/%.o: $(KER_SRC)/%.cc
 	mkdir -p $(@D)
-	$(CC) $(CFLAGS) -I$(KER_SRC) -I$(KER_HEAD) -c $< -o $@ $(CSRCFLAGS)
+	$(CC) $(CFLAGS) -I$(KER_SRC) -I$(HEAD) -c $< -o $@ $(CSRCFLAGS)
 
 # rule for kernel source assembly objects
 $(OBJ_DIR)/%.o: $(KER_SRC)/%.S
 	mkdir -p $(@D)
-	$(CC) $(CFLAGS) -I$(KER_SRC) -I$(KER_HEAD) -c $< -o $@
+	$(CC) $(CFLAGS) -I$(KER_SRC) -I$(HEAD) -c $< -o $@
 
 # rule for common source objects
 $(OBJ_DIR)/%.o: $(COMMON_SRC)/%.cc
 	mkdir -p $(@D)
-	$(CC) $(CFLAGS) -I$(KER_SRC) -I$(KER_HEAD) -c $< -o $@ $(CSRCFLAGS)
+	$(CC) $(CFLAGS) -I$(KER_SRC) -I$(HEAD) -c $< -o $@ $(CSRCFLAGS)
 
 # rule for userland source objects
-$(OBJ_DIR)/%.o: $(USR_SRC)/%.cc
+$(OBJ_DIR)/p-%.o: $(USR_SRC)/%.cc
 	mkdir -p $(@D)
-	$(CC) $(CFLAGS) -I$(USR_SRC) -I$(KER_HEAD) -c $< -o $@ $(CSRCFLAGS)
+	$(CC) $(CFLAGS) -I$(USR_SRC) -I$(HEAD) -c $< -o $@ $(CSRCFLAGS)
+
+# rule for linking userland source objects
+$(OBJ_DIR)/p-%: $(OBJ_DIR)/p-%.o $(COMMON_OBJECTS) process.ld
+	# link the process
+	$(TOOLCHAIN_PREFIX)-ld $(LINKERFLAGS) $(COMMON_OBJECTS) $< -T process.ld -o $@
 
 font_psf.o: font.psf
 	$(TOOLCHAIN_PREFIX)-ld -r -b binary -o font_psf.o font.psf
@@ -69,11 +81,11 @@ clean:
 	rm $(KERNEL_NAME).elf
 	rm $(KERNEL_NAME).img
 
-run: build
+run: build-kernel
 	qemu-system-aarch64 -M raspi3 -kernel $(KERNEL_NAME).img -serial stdio
 
-run-debug: build
+run-debug: build-kernel
 	qemu-system-aarch64 -M raspi3 -kernel $(KERNEL_NAME).img -serial stdio -d int
 
-run-gdb: build
+run-gdb: build-kernel
 	qemu-system-aarch64 -M raspi3 -kernel $(KERNEL_NAME).img -serial stdio -s -S -d int

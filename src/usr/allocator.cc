@@ -1,10 +1,9 @@
-#include "usr/userland.hh"
 #include "common/stdlib.hh"
 
 /*
     Simple userland switcher to allow extensibly building userland programs
 */
-int user_main(int cmd) {
+int process_main(int cmd) {
     switch (cmd) {
         case 0: {
             printf("Hello, 0!\n");
@@ -28,6 +27,7 @@ int user_main(int cmd) {
         if (pg != nullptr) {
             *pg = 42;
             assert(*pg == 42);
+            sys_page_free(pg);
         } else {
             printf("out of mem\n");
             break;

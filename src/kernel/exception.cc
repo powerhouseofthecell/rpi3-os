@@ -1,4 +1,4 @@
-#include "kernel/uart.hh"
+#include "common/uart.hh"
 #include "kernel/regstate.hh"
 #include "common/stdlib.hh"
 

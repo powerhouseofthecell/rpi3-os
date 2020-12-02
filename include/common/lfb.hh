@@ -1,8 +1,8 @@
 #ifndef LFB_HH
 #define LFB_HH
 #include "common/types.hh"
-#include "kernel/uart.hh"
-#include "kernel/mbox.hh"
+#include "common/uart.hh"
+#include "common/mbox.hh"
 
 /* PC Screen Font as used by Linux Console */
 typedef struct {

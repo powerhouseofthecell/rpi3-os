@@ -1,5 +1,5 @@
-#include "kernel/gpio.hh"
-#include "kernel/uart.hh"
+#include "common/gpio.hh"
+#include "common/uart.hh"
 #include "kernel/mmu.hh"
 #include "kernel/pagetable.hh"
 #include "kernel/vmiter.hh"

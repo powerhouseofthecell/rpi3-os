@@ -1,6 +1,6 @@
 #ifndef _MMU_H
 #define _MMU_H
-#include "kernel/gpio.hh"
+#include "common/gpio.hh"
 
 // ***************************************
 // SCTLR_EL1, System Control Register (EL1), Page 2025 of AArch64-Reference-Manual.

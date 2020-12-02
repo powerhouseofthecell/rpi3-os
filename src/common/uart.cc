@@ -1,7 +1,7 @@
-#include "kernel/delays.hh"
-#include "kernel/gpio.hh"
-#include "kernel/uart.hh"
-#include "kernel/mbox.hh"
+#include "common/delays.hh"
+#include "common/gpio.hh"
+#include "common/uart.hh"
+#include "common/mbox.hh"
 
 /**
  * Set baud rate and characteristics (115200 8N1) and map to GPIO
