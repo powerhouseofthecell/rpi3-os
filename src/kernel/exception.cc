@@ -9,8 +9,9 @@ extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long
     // print out interruption type
     uart_puts(itoa(type, 10));
     uart_puts(") ");
+    printf("Exception (%i):\n", type);
     switch(type) {
-        case 0: case 8: uart_puts("Synchronous"); break;
+        case 0: case 4: case 8: uart_puts("Synchronous"); break;
         case 1: case 9: uart_puts("IRQ"); break;
         case 2: uart_puts("FIQ"); break;
         case 3: uart_puts("SError"); break;
@@ -28,6 +29,7 @@ extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long
     uart_bin(daif);
     uart_puts("\n");
 
+    printf("ESR: 0x%x\n", esr>>26);
     switch(esr>>26) {
         case 0b000000: uart_puts("Unknown"); break;
         case 0b000001: uart_puts("Trapped WFI/WFE"); break;
@@ -47,18 +49,34 @@ extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long
     if(esr>>26 == 0b100100 || esr>>26 == 0b100101) {
         uart_puts(", ");
         switch((esr>>2) & 0x3) {
-            case 0: uart_puts("Address size fault"); break;
-            case 1: uart_puts("Translation fault"); break;
-            case 2: uart_puts("Access flag fault"); break;
-            case 3: uart_puts("Permission fault"); break;
+            case 0: {
+                uart_puts("Address size fault");
+                printf("Address size fault");
+                break;
+            }
+            case 1: {
+                uart_puts("Translation fault");
+                printf("Translation fault");
+                break;
+            }
+            case 2: {
+                uart_puts("Access flag fault");
+                printf("Access flag fault");
+                break;
+            }
+            case 3: {
+                uart_puts("Permission fault");
+                printf("Permission fault");
+                break;
+            }
         }
-        switch(esr & 0x3) {
-            case 0: uart_puts(" at level 0"); break;
-            case 1: uart_puts(" at level 1"); break;
-            case 2: uart_puts(" at level 2"); break;
-            case 3: uart_puts(" at level 3"); break;
-        }
+        uart_puts(" at level ");
+        uart_puts(itoa(esr & 0x3, 10));
+        uart_puts("\n");
+        printf(" at level %i\n", esr & 0x3);
+        
     }
+
     // dump registers
     uart_puts(":\n  ESR_EL1 ");
     uart_hex(esr>>32);
@@ -73,6 +91,8 @@ extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long
     uart_hex(far>>32);
     uart_hex(far);
     uart_puts("\n");
+
+    printf(" ESR_EL1: %p, ELR_EL1: %p\nSPSR_EL1: %p, FAR_EL1: %p\n", esr, elr, spsr, far);
     
     // no return from exception for now
     while(1);

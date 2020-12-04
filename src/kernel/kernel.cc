@@ -8,6 +8,7 @@
 #include "common/types.hh"
 #include "common/stdlib.hh"
 #include "kernel/sd.hh"
+#include "kernel/fat32.hh"
 
 extern volatile uint64_t _data;
 extern volatile uint64_t _kernel_end;
@@ -24,6 +25,9 @@ proc ptable[NPROC];
 // a pointer to the current process
 proc* current;
 
+// the global sd card device
+sditer base_sd_device;
+
 // returns the address of the current proc's regs
 extern "C" void* get_current_regs() {
     return (void*) &current->regs;
@@ -39,7 +43,6 @@ void constructors_init() {
     extern constructor_function __init_array_start[];
     extern constructor_function __init_array_end[];
     for (auto fp = __init_array_start; fp != __init_array_end; ++fp) {
-        printf("%p\n", fp);
         (*fp)();
     }
 }
@@ -198,9 +201,6 @@ void proc_init() {
 
 // the main initialization function for our kernel, interrupts are off in the kernel
 extern "C" void kernel_main() {
-    // initialize the cpp constructors
-    constructors_init();
-
     // set up serial console
     uart_init();
 
@@ -209,6 +209,9 @@ extern "C" void kernel_main() {
 
     // initialize memory and the memory management unit
     mmu_init();
+
+    // initialize the cpp constructors
+    constructors_init();
 
     // initialize interrupts (timer)
     init_interrupts();
@@ -231,16 +234,6 @@ extern "C" void kernel_main() {
     );
 
     printf("lfb: %p\n", fbInfo.addr);
-    printf("sd: %i\n", sd_init());
-
-    unsigned char buf[512];
-    sd_readblock(0, buf, 1);
-    for (int i = 0; i < 512; i++) {
-        if (i % 64 == 0) {
-            printf("\n\n");
-        } 
-        printf("%x", buf[i]);
-    }
 
     // initialize the ptable and initial process
     //proc_init();
