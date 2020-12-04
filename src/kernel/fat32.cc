@@ -47,4 +47,17 @@ sditer::sditer() {
         return;
     }
     printf("EPBP Signature Verified\n");
+
+    this->fat_base_sector = this->ebpb.num_reserved_sectors + this->mbr.partition_table[0].relative_sector;
+    this->data_base_sector = this->ebpb.sectors_per_fat_large * this->ebpb.num_fats + this->fat_base_sector;
+    
+    // load the first fat sector into the fat buffer
+    this->fat_off_sector = 0;
+    sd_readblock(this->fat_base_sector + this->fat_off_sector, (unsigned char*) this->fat_buf, 1);
+    
+    // load the root directory into the data buf
+    this->current_cluster_no = this->ebpb.root_cluster_no - 2;
+    this->data_off_sector = this->ebpb.sectors_per_cluster * this->current_cluster_no;
+    sd_readblock(this->data_base_sector + this->data_off_sector, (unsigned char*) this->data_buf, 1);
 }
+
